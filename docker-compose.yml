@@ -1,0 +1,33 @@
+services:
+  control-plane:
+    build: ./control-plane
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gpu:gpu@db:5432/gpu_network
+      JWT_SECRET: dev-secret-change-in-prod
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./control-plane:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gpu
+      POSTGRES_PASSWORD: gpu
+      POSTGRES_DB: gpu_network
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gpu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

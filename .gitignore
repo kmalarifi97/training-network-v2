@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Go
+*.exe
+*.test
+*.out
+bin/
+gpu-agent
+
+# Environment
+.env
+.env.local
+*.local.env
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Claude Code local overrides
+.claude/settings.local.json
+.claude/cache/
+
+# Old v1 (nested repo)
+deprecated/
