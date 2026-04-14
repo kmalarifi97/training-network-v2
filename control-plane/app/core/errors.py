@@ -21,6 +21,15 @@ class AuditEventNotFound(DomainError):
     pass
 
 
+class ApiKeyNotFound(DomainError):
+    pass
+
+
+class ApiKeyNotOwned(DomainError):
+    def __init__(self) -> None:
+        super().__init__("API key does not belong to the current user")
+
+
 class AccountNotActive(DomainError):
     def __init__(self, status: str) -> None:
         super().__init__(f"Account is {status}; contact an administrator")

@@ -6,10 +6,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import UserNotFound
-from app.core.security import decode_token
+from app.core.security import API_KEY_PREFIX, decode_token
 from app.db import get_session
 from app.models.user import User
 from app.services.admin_service import AdminService
+from app.services.api_key_service import ApiKeyService
 from app.services.auth_service import AuthService
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -31,8 +32,16 @@ def get_admin_service(session: DbSession) -> AdminService:
 AdminServiceDep = Annotated[AdminService, Depends(get_admin_service)]
 
 
+def get_api_key_service(session: DbSession) -> ApiKeyService:
+    return ApiKeyService(session)
+
+
+ApiKeyServiceDep = Annotated[ApiKeyService, Depends(get_api_key_service)]
+
+
 async def get_current_user(
     auth_service: AuthServiceDep,
+    api_key_service: ApiKeyServiceDep,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> User:
     if credentials is None:
@@ -42,7 +51,19 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = decode_token(credentials.credentials)
+    token = credentials.credentials
+
+    if token.startswith(API_KEY_PREFIX):
+        user = await api_key_service.authenticate(token)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or revoked API key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
+
+    payload = decode_token(token)
     if payload is None or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

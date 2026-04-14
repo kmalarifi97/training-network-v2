@@ -5,6 +5,8 @@ from app.config import settings
 from app.controllers import api_router
 from app.core.errors import (
     AccountNotActive,
+    ApiKeyNotFound,
+    ApiKeyNotOwned,
     AuditEventNotFound,
     EmailAlreadyExists,
     InvalidCredentials,
@@ -71,5 +73,21 @@ async def audit_event_not_found_handler(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ApiKeyNotFound)
+async def api_key_not_found_handler(_: Request, exc: ApiKeyNotFound) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ApiKeyNotOwned)
+async def api_key_not_owned_handler(_: Request, exc: ApiKeyNotOwned) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
         content={"detail": str(exc)},
     )
