@@ -1,6 +1,7 @@
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
@@ -28,3 +29,14 @@ class AuditRepository:
         self.session.add(entry)
         await self.session.flush()
         return entry
+
+    async def get_signup_ip(self, user_id: UUID) -> str | None:
+        stmt = (
+            select(AuditLog.ip_address)
+            .where(AuditLog.user_id == user_id)
+            .where(AuditLog.event_type == "auth.signup")
+            .order_by(desc(AuditLog.created_at))
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

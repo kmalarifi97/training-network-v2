@@ -28,4 +28,6 @@ class UserResponse(BaseModel):
     status: str
     can_host: bool
     can_rent: bool
+    is_admin: bool
+    credits_gpu_hours: int
     created_at: datetime

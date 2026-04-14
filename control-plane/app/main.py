@@ -7,6 +7,7 @@ from app.core.errors import (
     AccountNotActive,
     EmailAlreadyExists,
     InvalidCredentials,
+    InvalidPaginationCursor,
     UserNotFound,
 )
 
@@ -49,5 +50,15 @@ async def account_not_active_handler(
 async def user_not_found_handler(_: Request, exc: UserNotFound) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(InvalidPaginationCursor)
+async def invalid_pagination_cursor_handler(
+    _: Request, exc: InvalidPaginationCursor
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": str(exc)},
     )
