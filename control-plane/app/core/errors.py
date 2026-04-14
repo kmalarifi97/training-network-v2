@@ -17,6 +17,10 @@ class UserNotFound(DomainError):
     pass
 
 
+class AuditEventNotFound(DomainError):
+    pass
+
+
 class AccountNotActive(DomainError):
     def __init__(self, status: str) -> None:
         super().__init__(f"Account is {status}; contact an administrator")

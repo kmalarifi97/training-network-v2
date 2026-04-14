@@ -5,6 +5,7 @@ from app.config import settings
 from app.controllers import api_router
 from app.core.errors import (
     AccountNotActive,
+    AuditEventNotFound,
     EmailAlreadyExists,
     InvalidCredentials,
     InvalidPaginationCursor,
@@ -60,5 +61,15 @@ async def invalid_pagination_cursor_handler(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(AuditEventNotFound)
+async def audit_event_not_found_handler(
+    _: Request, exc: AuditEventNotFound
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
         content={"detail": str(exc)},
     )
