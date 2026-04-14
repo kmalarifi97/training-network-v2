@@ -30,6 +30,17 @@ class ApiKeyNotOwned(DomainError):
         super().__init__("API key does not belong to the current user")
 
 
+class NotAHost(DomainError):
+    def __init__(self) -> None:
+        super().__init__("User is not authorized to host GPU nodes")
+
+
+class ClaimTokenInvalid(DomainError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"Claim token is invalid: {reason}")
+        self.reason = reason
+
+
 class AccountNotActive(DomainError):
     def __init__(self, status: str) -> None:
         super().__init__(f"Account is {status}; contact an administrator")

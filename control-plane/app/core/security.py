@@ -13,6 +13,10 @@ API_KEY_PREFIX = "gpuk_"
 API_KEY_RANDOM_BYTES = 24
 API_KEY_LOOKUP_PREFIX_LENGTH = 12
 
+CLAIM_TOKEN_PREFIX = "gpuclaim_"
+CLAIM_TOKEN_RANDOM_BYTES = 24
+CLAIM_TOKEN_LOOKUP_PREFIX_LENGTH = 12
+
 
 def hash_password(plain_password: str) -> str:
     return bcrypt.hashpw(
@@ -44,6 +48,24 @@ def verify_api_key(plain_key: str, hashed_key: str) -> bool:
 
 def api_key_lookup_prefix(plain_key: str) -> str:
     return plain_key[:API_KEY_LOOKUP_PREFIX_LENGTH]
+
+
+def generate_claim_token() -> tuple[str, str, str]:
+    """Create a fresh node claim token. Returns (plaintext, lookup_prefix, bcrypt_hash)."""
+    token = CLAIM_TOKEN_PREFIX + secrets.token_urlsafe(CLAIM_TOKEN_RANDOM_BYTES)
+    lookup_prefix = token[:CLAIM_TOKEN_LOOKUP_PREFIX_LENGTH]
+    token_hash = bcrypt.hashpw(
+        token.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    ).decode("utf-8")
+    return token, lookup_prefix, token_hash
+
+
+def verify_claim_token(plain_token: str, hashed_token: str) -> bool:
+    return bcrypt.checkpw(plain_token.encode("utf-8"), hashed_token.encode("utf-8"))
+
+
+def claim_token_lookup_prefix(plain_token: str) -> str:
+    return plain_token[:CLAIM_TOKEN_LOOKUP_PREFIX_LENGTH]
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:

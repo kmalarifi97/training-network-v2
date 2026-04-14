@@ -14,5 +14,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_days: int = 7
 
+    control_plane_public_url: str = "http://localhost:8000"
+    claim_token_ttl_hours: int = 24
+
 
 settings = Settings()

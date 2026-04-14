@@ -8,9 +8,11 @@ from app.core.errors import (
     ApiKeyNotFound,
     ApiKeyNotOwned,
     AuditEventNotFound,
+    ClaimTokenInvalid,
     EmailAlreadyExists,
     InvalidCredentials,
     InvalidPaginationCursor,
+    NotAHost,
     UserNotFound,
 )
 
@@ -90,4 +92,22 @@ async def api_key_not_owned_handler(_: Request, exc: ApiKeyNotOwned) -> JSONResp
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
         content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(NotAHost)
+async def not_a_host_handler(_: Request, exc: NotAHost) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ClaimTokenInvalid)
+async def claim_token_invalid_handler(
+    _: Request, exc: ClaimTokenInvalid
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc), "reason": exc.reason},
     )

@@ -8,6 +8,8 @@ from app.db import SessionLocal
 from app.main import app
 from app.models.api_key import ApiKey
 from app.models.audit_log import AuditLog
+from app.models.claim_token import ClaimToken
+from app.models.node import Node
 from app.models.user import User
 
 
@@ -15,6 +17,8 @@ from app.models.user import User
 async def clean_db() -> AsyncGenerator[None, None]:
     yield
     async with SessionLocal() as session:
+        await session.execute(delete(Node))
+        await session.execute(delete(ClaimToken))
         await session.execute(delete(ApiKey))
         await session.execute(delete(AuditLog))
         await session.execute(delete(User))
