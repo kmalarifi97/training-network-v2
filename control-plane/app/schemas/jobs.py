@@ -50,3 +50,15 @@ class JobPublic(BaseModel):
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
+
+
+class JobAssignment(BaseModel):
+    job_id: UUID
+    docker_image: str
+    command: list[str]
+    max_duration_seconds: int
+
+
+class CompleteJobRequest(BaseModel):
+    exit_code: int = Field(ge=-1024, le=1024)
+    error_message: str | None = Field(default=None, max_length=4000)
