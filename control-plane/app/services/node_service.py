@@ -21,6 +21,7 @@ from app.models.user import User
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.claim_token_repo import ClaimTokenRepository
 from app.repositories.job_repo import JobRepository
+from app.repositories.node_metric_repo import NodeMetricRepository
 from app.repositories.node_repo import NodeRepository
 
 
@@ -36,6 +37,7 @@ class NodeService:
         self.node_repo = NodeRepository(session)
         self.audit_repo = AuditRepository(session)
         self.job_repo = JobRepository(session)
+        self.metric_repo = NodeMetricRepository(session)
 
     async def create_claim_token(
         self,
@@ -146,3 +148,8 @@ class NodeService:
         await self.session.commit()
         await self.session.refresh(node)
         return node
+
+    async def record_metrics(self, node: Node, samples: list[dict]) -> None:
+        await self.metric_repo.upsert_samples(node.id, samples)
+        await self.node_repo.update_last_seen(node)
+        await self.session.commit()

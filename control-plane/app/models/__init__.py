@@ -4,6 +4,16 @@ from app.models.base import Base
 from app.models.claim_token import ClaimToken
 from app.models.job import Job
 from app.models.node import Node
+from app.models.node_metric import NodeMetric
 from app.models.user import User
 
-__all__ = ["ApiKey", "AuditLog", "Base", "ClaimToken", "Job", "Node", "User"]
+__all__ = [
+    "ApiKey",
+    "AuditLog",
+    "Base",
+    "ClaimToken",
+    "Job",
+    "Node",
+    "NodeMetric",
+    "User",
+]

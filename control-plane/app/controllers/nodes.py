@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.config import settings
 from app.deps import CurrentNode, CurrentUser, DbSession
@@ -10,6 +10,7 @@ from app.schemas.nodes import (
     HeartbeatRequest,
     HeartbeatResponse,
     NodeDetail,
+    NodeMetricSample,
     NodePublic,
     RegisterNodeRequest,
     RegisterNodeResponse,
@@ -130,3 +131,22 @@ async def heartbeat(
     service = NodeService(session)
     await service.record_heartbeat(node)
     return HeartbeatResponse(received_at=datetime.now(UTC))
+
+
+@router.post("/{node_id}/metrics", status_code=status.HTTP_204_NO_CONTENT)
+async def push_metrics(
+    node_id: UUID,
+    samples: list[NodeMetricSample],
+    node: CurrentNode,
+    session: DbSession,
+):
+    if node.id != node_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Agent token does not match node",
+        )
+    service = NodeService(session)
+    await service.record_metrics(
+        node, [s.model_dump() for s in samples]
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

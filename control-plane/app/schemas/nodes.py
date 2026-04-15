@@ -48,3 +48,11 @@ class HeartbeatRequest(BaseModel):
 class HeartbeatResponse(BaseModel):
     received_at: datetime
     cancel_job_id: UUID | None = None
+
+
+class NodeMetricSample(BaseModel):
+    gpu_index: int = Field(ge=0, le=63)
+    utilization_pct: int = Field(ge=0, le=100)
+    memory_used_bytes: int = Field(ge=0)
+    memory_total_bytes: int = Field(ge=0)
+    temperature_c: int = Field(ge=-50, le=200)

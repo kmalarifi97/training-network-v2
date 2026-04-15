@@ -23,6 +23,9 @@ from app.core.errors import (
 )
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
+from app.observability import HTTPMetricsMiddleware  # noqa: E402
+
+app.add_middleware(HTTPMetricsMiddleware)
 app.include_router(api_router)
 
 
