@@ -56,6 +56,7 @@ type Daemon struct {
 
 	mu        sync.Mutex
 	runningID string
+	cancelRun context.CancelFunc
 }
 
 // New returns a Daemon wired to the production HTTP and Docker implementations.
@@ -95,15 +96,26 @@ func (d *Daemon) Run(ctx context.Context) error {
 }
 
 func (d *Daemon) tickOnce(ctx context.Context) {
-	if _, err := d.heartbeat(ctx); err != nil {
+	hb, err := d.heartbeat(ctx)
+	if err != nil {
 		log.Printf("heartbeat: %v", err)
 		return
 	}
 
 	d.mu.Lock()
 	busy := d.runningID != ""
+	cancelTarget := ""
+	if hb != nil && hb.CancelJobID != nil {
+		cancelTarget = *hb.CancelJobID
+	}
+	cancel := d.cancelRun
 	d.mu.Unlock()
+
 	if busy {
+		if cancelTarget != "" && cancel != nil {
+			log.Printf("control plane requested cancel of job %s", cancelTarget)
+			cancel()
+		}
 		return
 	}
 
@@ -126,10 +138,12 @@ func (d *Daemon) runJob(parent context.Context, job *JobAssignment) {
 
 	d.mu.Lock()
 	d.runningID = job.JobID
+	d.cancelRun = cancel
 	d.mu.Unlock()
 	defer func() {
 		d.mu.Lock()
 		d.runningID = ""
+		d.cancelRun = nil
 		d.mu.Unlock()
 	}()
 
@@ -143,6 +157,14 @@ func (d *Daemon) runJob(parent context.Context, job *JobAssignment) {
 		if exitCode == 0 {
 			exitCode = 1
 		}
+	}
+	// If the run was cancelled by the control plane, surface that explicitly so
+	// the server can mark the job as cancelled (vs. failed) when the user has
+	// already requested cancellation.
+	if runCtx.Err() == context.Canceled {
+		exitCode = -1
+		s := "cancelled by user"
+		errMsg = &s
 	}
 
 	if err := d.complete(context.Background(), job.JobID, exitCode, errMsg); err != nil {

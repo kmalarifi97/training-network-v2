@@ -19,9 +19,12 @@ from app.repositories.job_log_repo import JobLogRepository
 from app.repositories.job_repo import JobRepository
 from app.repositories.user_repo import UserRepository
 from app.services.job_status import (
+    CANCELLED,
     COMPLETED,
     FAILED,
+    QUEUED,
     RUNNING,
+    TERMINAL_STATUSES,
     assert_transition,
 )
 
@@ -120,7 +123,16 @@ class JobService:
         job = await self.job_repo.get_by_id(job_id)
         if job is None or job.assigned_node_id != node.id:
             raise JobNotFound(f"job {job_id} not found")
-        target = COMPLETED if exit_code == 0 else FAILED
+
+        # If the user already requested cancel, route to the cancelled state
+        # regardless of exit_code so a successful no-op container or a kill
+        # signal both land as cancelled in the user's view.
+        if job.cancel_requested_at is not None:
+            target = CANCELLED
+        elif exit_code == 0:
+            target = COMPLETED
+        else:
+            target = FAILED
         assert_transition(job.status, target)
 
         completed_at = datetime.now(UTC)
@@ -129,11 +141,14 @@ class JobService:
         if user is not None:
             user.credits_gpu_hours = max(0, user.credits_gpu_hours - billed)
 
-        await self.job_repo.mark_completed(
-            job, exit_code=exit_code, error_message=error_message
+        await self.job_repo.mark_terminal(
+            job,
+            terminal_status=target,
+            exit_code=exit_code,
+            error_message=error_message,
         )
         await self.audit_repo.create(
-            event_type=f"job.{job.status}",
+            event_type=f"job.{target}",
             user_id=job.user_id,
             event_data={
                 "job_id": str(job.id),
@@ -142,6 +157,47 @@ class JobService:
                 "billed_gpu_hours": billed,
                 "error_message": error_message,
             },
+        )
+        await self.session.commit()
+        await self.session.refresh(job)
+        return job
+
+    async def cancel_job(
+        self,
+        owner: User,
+        job_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> Job:
+        job = await self.job_repo.get_by_id(job_id)
+        if job is None or job.user_id != owner.id:
+            raise JobNotFound(f"job {job_id} not found")
+
+        if job.status in TERMINAL_STATUSES:
+            # 409 — completed/failed/cancelled jobs are immutable.
+            assert_transition(job.status, CANCELLED)
+
+        if job.status == QUEUED:
+            await self.job_repo.mark_terminal(
+                job,
+                terminal_status=CANCELLED,
+                exit_code=None,
+                error_message="cancelled by user",
+            )
+            event_data = {"job_id": str(job.id), "phase": "queued"}
+        elif job.status == RUNNING:
+            if job.cancel_requested_at is None:
+                await self.job_repo.request_cancel(job)
+            event_data = {"job_id": str(job.id), "phase": "running"}
+        else:
+            assert_transition(job.status, CANCELLED)  # safety net
+
+        await self.audit_repo.create(
+            event_type="job.cancelled",
+            user_id=owner.id,
+            event_data=event_data,
+            ip_address=ip_address,
+            user_agent=user_agent,
         )
         await self.session.commit()
         await self.session.refresh(job)

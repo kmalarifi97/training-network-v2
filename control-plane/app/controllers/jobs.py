@@ -86,6 +86,23 @@ async def get_job(
     return JobPublic.model_validate(job)
 
 
+@router.post("/{job_id}/cancel", response_model=JobPublic)
+async def cancel_job(
+    job_id: UUID,
+    request: Request,
+    user: CurrentUser,
+    session: DbSession,
+) -> JobPublic:
+    service = JobService(session)
+    job = await service.cancel_job(
+        owner=user,
+        job_id=job_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return JobPublic.model_validate(job)
+
+
 @router.post("/{job_id}/complete", response_model=JobPublic)
 async def complete_job(
     job_id: UUID,

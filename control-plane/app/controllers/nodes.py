@@ -130,7 +130,15 @@ async def heartbeat(
         )
     service = NodeService(session)
     await service.record_heartbeat(node)
-    return HeartbeatResponse(received_at=datetime.now(UTC))
+    current = await service.get_current_job(node)
+    cancel_job_id = (
+        current.id
+        if current is not None and current.cancel_requested_at is not None
+        else None
+    )
+    return HeartbeatResponse(
+        received_at=datetime.now(UTC), cancel_job_id=cancel_job_id
+    )
 
 
 @router.post("/{node_id}/metrics", status_code=status.HTTP_204_NO_CONTENT)

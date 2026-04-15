@@ -95,12 +95,21 @@ class JobRepository:
         await self.session.flush()
         return job
 
-    async def mark_completed(
-        self, job: Job, exit_code: int, error_message: str | None
+    async def mark_terminal(
+        self,
+        job: Job,
+        terminal_status: str,
+        exit_code: int | None,
+        error_message: str | None,
     ) -> Job:
-        job.status = "completed" if exit_code == 0 else "failed"
+        job.status = terminal_status
         job.exit_code = exit_code
         job.error_message = error_message
         job.completed_at = datetime.now(UTC)
+        await self.session.flush()
+        return job
+
+    async def request_cancel(self, job: Job) -> Job:
+        job.cancel_requested_at = datetime.now(UTC)
         await self.session.flush()
         return job
