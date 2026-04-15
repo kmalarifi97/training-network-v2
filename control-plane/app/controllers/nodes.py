@@ -185,6 +185,23 @@ async def undrain_node(
     )
 
 
+@router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_node(
+    node_id: UUID,
+    request: Request,
+    user: CurrentUser,
+    session: DbSession,
+):
+    service = NodeService(session)
+    await service.delete_node(
+        owner=user,
+        node_id=node_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/{node_id}/metrics", status_code=status.HTTP_204_NO_CONTENT)
 async def push_metrics(
     node_id: UUID,

@@ -220,16 +220,18 @@ class NodeService:
         ip_address: str | None = None,
         user_agent: str | None = None,
         actor: User | None = None,
-    ) -> Node:
+    ) -> str:
         node = await self._get_owned_for_actor(owner, node_id, allow_admin=actor)
         running = await self.job_repo.get_running_for_node(node.id)
         if running is not None:
             raise NodeBusy(str(node.id))
         node_id_str = str(node.id)
-        await self.node_repo.revoke_agent_token(node)
+        owner_id = node.user_id
+        # Deleting the row drops agent_token_hash with it, so lookups by the
+        # token prefix simply find nothing and fall through to 401.
         await self.audit_repo.create(
             event_type="node.removed",
-            user_id=node.user_id,
+            user_id=owner_id,
             event_data={
                 "node_id": node_id_str,
                 "actor_user_id": str((actor or owner).id),
@@ -240,7 +242,7 @@ class NodeService:
         )
         await self.node_repo.delete(node)
         await self.session.commit()
-        return node
+        return node_id_str
 
     async def _get_owned_for_actor(
         self,
