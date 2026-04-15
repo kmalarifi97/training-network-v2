@@ -10,8 +10,12 @@ from app.core.errors import (
     AuditEventNotFound,
     ClaimTokenInvalid,
     EmailAlreadyExists,
+    InsufficientCredits,
     InvalidCredentials,
+    InvalidJobTransition,
     InvalidPaginationCursor,
+    JobNotFound,
+    JobNotOwned,
     NotAHost,
     UserNotFound,
 )
@@ -110,4 +114,48 @@ async def claim_token_invalid_handler(
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": str(exc), "reason": exc.reason},
+    )
+
+
+@app.exception_handler(InsufficientCredits)
+async def insufficient_credits_handler(
+    _: Request, exc: InsufficientCredits
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        content={
+            "detail": str(exc),
+            "required_gpu_hours": exc.required_hours,
+            "available_gpu_hours": exc.available_hours,
+        },
+    )
+
+
+@app.exception_handler(JobNotFound)
+async def job_not_found_handler(_: Request, exc: JobNotFound) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(JobNotOwned)
+async def job_not_owned_handler(_: Request, exc: JobNotOwned) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": "Job not found"},
+    )
+
+
+@app.exception_handler(InvalidJobTransition)
+async def invalid_job_transition_handler(
+    _: Request, exc: InvalidJobTransition
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "detail": str(exc),
+            "from_status": exc.from_status,
+            "to_status": exc.to_status,
+        },
     )

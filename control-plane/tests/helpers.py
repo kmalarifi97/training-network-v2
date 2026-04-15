@@ -37,6 +37,7 @@ async def set_user_flags(
     status: str | None = None,
     is_admin: bool | None = None,
     can_host: bool | None = None,
+    credits_gpu_hours: int | None = None,
 ) -> None:
     values: dict[str, Any] = {}
     if status is not None:
@@ -45,6 +46,8 @@ async def set_user_flags(
         values["is_admin"] = is_admin
     if can_host is not None:
         values["can_host"] = can_host
+    if credits_gpu_hours is not None:
+        values["credits_gpu_hours"] = credits_gpu_hours
     if not values:
         return
     async with SessionLocal() as session:
@@ -61,10 +64,18 @@ async def make_admin(client: AsyncClient, email: str = "admin@example.com") -> t
 
 
 async def make_active_user(
-    client: AsyncClient, email: str, can_host: bool = False
+    client: AsyncClient,
+    email: str,
+    can_host: bool = False,
+    credits_gpu_hours: int = 0,
 ) -> tuple[str, str]:
     user = await signup(client, email)
-    await set_user_flags(email, status="active", can_host=can_host)
+    await set_user_flags(
+        email,
+        status="active",
+        can_host=can_host,
+        credits_gpu_hours=credits_gpu_hours,
+    )
     token = await login(client, email)
     return user["id"], token
 

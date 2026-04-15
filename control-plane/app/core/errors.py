@@ -50,3 +50,29 @@ class AccountNotActive(DomainError):
 class InvalidPaginationCursor(DomainError):
     def __init__(self) -> None:
         super().__init__("Invalid pagination cursor")
+
+
+class InsufficientCredits(DomainError):
+    def __init__(self, required_hours: float, available_hours: int) -> None:
+        super().__init__(
+            f"Insufficient GPU-hour credits: requires {required_hours:.4f}, "
+            f"have {available_hours}"
+        )
+        self.required_hours = required_hours
+        self.available_hours = available_hours
+
+
+class JobNotFound(DomainError):
+    pass
+
+
+class JobNotOwned(DomainError):
+    def __init__(self) -> None:
+        super().__init__("Job does not belong to the current user")
+
+
+class InvalidJobTransition(DomainError):
+    def __init__(self, from_status: str, to_status: str) -> None:
+        super().__init__(f"Cannot transition job from {from_status} to {to_status}")
+        self.from_status = from_status
+        self.to_status = to_status
