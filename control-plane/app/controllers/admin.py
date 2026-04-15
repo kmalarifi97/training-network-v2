@@ -18,6 +18,7 @@ from app.schemas.admin_audit import (
     AdminAuditEventDetail,
     AdminAuditListResponse,
 )
+from app.schemas.admin_dashboard import AdminDashboardResponse
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -145,6 +146,15 @@ async def list_audit_events(
         items=[_audit_event_to_schema(ev, email) for ev, email in rows],
         next_cursor=next_cursor,
     )
+
+
+@router.get("/dashboard", response_model=AdminDashboardResponse)
+async def dashboard(
+    admin: AdminUser,
+    admin_service: AdminServiceDep,
+) -> AdminDashboardResponse:
+    data = await admin_service.dashboard()
+    return AdminDashboardResponse(**data)
 
 
 @router.get("/audit/{event_id}", response_model=AdminAuditEventDetail)

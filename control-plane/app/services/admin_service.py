@@ -1,14 +1,19 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AuditEventNotFound, UserNotFound
 from app.core.pagination import decode_cursor, encode_cursor
 from app.models.audit_log import AuditLog
+from app.models.job import Job
+from app.models.node import Node
 from app.models.user import User
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.user_repo import UserRepository
+from app.services.job_service import _bill_gpu_hours
+from app.services.node_status import compute_node_status
 
 
 class AdminService:
@@ -167,3 +172,83 @@ class AdminService:
         if row is None:
             raise AuditEventNotFound(f"audit event {event_id} not found")
         return row
+
+    async def dashboard(self) -> dict:
+        now = datetime.now(UTC)
+        cutoff = now - timedelta(hours=24)
+
+        user_rows = (
+            await self.session.execute(
+                select(User.status, func.count()).group_by(User.status)
+            )
+        ).all()
+        user_counts = {"pending": 0, "active": 0, "suspended": 0}
+        total_users = 0
+        for status, count in user_rows:
+            total_users += count
+            if status in user_counts:
+                user_counts[status] = count
+
+        node_rows = (
+            await self.session.execute(select(Node))
+        ).scalars().all()
+        node_counts = {"online": 0, "offline": 0, "draining": 0}
+        for n in node_rows:
+            node_counts[compute_node_status(n, now)] += 1
+
+        job_rows = (
+            await self.session.execute(
+                select(Job.status, func.count()).group_by(Job.status)
+            )
+        ).all()
+        queued = running = 0
+        for status, count in job_rows:
+            if status == "queued":
+                queued = count
+            elif status == "running":
+                running = count
+
+        completed_24h = await self.session.scalar(
+            select(func.count())
+            .select_from(Job)
+            .where(Job.status == "completed")
+            .where(Job.completed_at >= cutoff)
+        ) or 0
+        failed_24h = await self.session.scalar(
+            select(func.count())
+            .select_from(Job)
+            .where(Job.status == "failed")
+            .where(Job.completed_at >= cutoff)
+        ) or 0
+        cancelled_24h = await self.session.scalar(
+            select(func.count())
+            .select_from(Job)
+            .where(Job.status == "cancelled")
+            .where(Job.completed_at >= cutoff)
+        ) or 0
+
+        completed_jobs = (
+            await self.session.execute(
+                select(Job)
+                .where(Job.completed_at >= cutoff)
+                .where(Job.status.in_(["completed", "failed", "cancelled"]))
+            )
+        ).scalars().all()
+        gpu_hours = 0
+        for j in completed_jobs:
+            if j.started_at is None or j.completed_at is None:
+                continue
+            gpu_hours += _bill_gpu_hours(j.started_at, j.completed_at, j.gpu_count)
+
+        return {
+            "users": {"total": total_users, **user_counts},
+            "nodes": node_counts,
+            "jobs": {
+                "queued": queued,
+                "running": running,
+                "completed_24h": completed_24h,
+                "failed_24h": failed_24h,
+                "cancelled_24h": cancelled_24h,
+            },
+            "compute": {"gpu_hours_served_24h": gpu_hours},
+        }
