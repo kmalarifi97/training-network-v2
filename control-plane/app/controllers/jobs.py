@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query, Request, Response, status
 from app.core.errors import InvalidPaginationCursor
 from app.core.pagination import InvalidCursorError
 from app.deps import CurrentNode, CurrentUser, DbSession
+from app.schemas.job_logs import JobLogEntryIn, JobLogEntryOut, JobLogListResponse
 from app.schemas.jobs import (
     CompleteJobRequest,
     JobAssignment,
@@ -100,3 +101,36 @@ async def complete_job(
         error_message=payload.error_message,
     )
     return JobPublic.model_validate(job)
+
+
+@router.post("/{job_id}/logs", status_code=status.HTTP_204_NO_CONTENT)
+async def push_logs(
+    job_id: UUID,
+    entries: list[JobLogEntryIn],
+    node: CurrentNode,
+    session: DbSession,
+):
+    if not entries:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    service = JobService(session)
+    await service.append_logs(
+        node, job_id, [e.model_dump() for e in entries]
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{job_id}/logs", response_model=JobLogListResponse)
+async def get_logs(
+    job_id: UUID,
+    user: CurrentUser,
+    session: DbSession,
+    after_sequence: int = Query(default=-1, ge=-1),
+    limit: int = Query(default=500, ge=1, le=2000),
+) -> JobLogListResponse:
+    service = JobService(session)
+    rows = await service.get_logs_for_user(
+        owner=user, job_id=job_id, after_sequence=after_sequence, limit=limit
+    )
+    return JobLogListResponse(
+        items=[JobLogEntryOut.model_validate(r) for r in rows]
+    )

@@ -13,7 +13,9 @@ from app.core.pagination import decode_cursor, encode_cursor
 from app.models.job import Job
 from app.models.node import Node
 from app.models.user import User
+from app.models.job_log import JobLog
 from app.repositories.audit_repo import AuditRepository
+from app.repositories.job_log_repo import JobLogRepository
 from app.repositories.job_repo import JobRepository
 from app.repositories.user_repo import UserRepository
 from app.services.job_status import (
@@ -41,6 +43,7 @@ class JobService:
         self.job_repo = JobRepository(session)
         self.audit_repo = AuditRepository(session)
         self.user_repo = UserRepository(session)
+        self.log_repo = JobLogRepository(session)
 
     async def submit(
         self,
@@ -167,3 +170,25 @@ class JobService:
         if job is None or job.user_id != owner.id:
             raise JobNotFound(f"job {job_id} not found")
         return job
+
+    async def append_logs(
+        self, node: Node, job_id: UUID, entries: list[dict]
+    ) -> int:
+        job = await self.job_repo.get_by_id(job_id)
+        if job is None or job.assigned_node_id != node.id:
+            raise JobNotFound(f"job {job_id} not found")
+        inserted = await self.log_repo.append(job.id, entries)
+        await self.session.commit()
+        return inserted
+
+    async def get_logs_for_user(
+        self,
+        owner: User,
+        job_id: UUID,
+        after_sequence: int,
+        limit: int,
+    ) -> list[JobLog]:
+        job = await self.job_repo.get_by_id(job_id)
+        if job is None or job.user_id != owner.id:
+            raise JobNotFound(f"job {job_id} not found")
+        return await self.log_repo.list_after(job.id, after_sequence, limit)
