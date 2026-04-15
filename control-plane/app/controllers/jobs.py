@@ -1,11 +1,14 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
 
+from app.core.errors import InvalidPaginationCursor
+from app.core.pagination import InvalidCursorError
 from app.deps import CurrentNode, CurrentUser, DbSession
 from app.schemas.jobs import (
     CompleteJobRequest,
     JobAssignment,
+    JobListResponse,
     JobPublic,
     SubmitJobRequest,
 )
@@ -34,6 +37,27 @@ async def submit_job(
     return JobPublic.model_validate(job)
 
 
+@router.get("", response_model=JobListResponse)
+async def list_jobs(
+    user: CurrentUser,
+    session: DbSession,
+    job_status: str | None = Query(default=None, alias="status"),
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+) -> JobListResponse:
+    service = JobService(session)
+    try:
+        jobs, next_cursor = await service.list_for_user(
+            owner=user, status=job_status, cursor=cursor, limit=limit
+        )
+    except InvalidCursorError as exc:
+        raise InvalidPaginationCursor() from exc
+    return JobListResponse(
+        items=[JobPublic.model_validate(j) for j in jobs],
+        next_cursor=next_cursor,
+    )
+
+
 @router.post(
     "/claim",
     response_model=JobAssignment,
@@ -50,6 +74,15 @@ async def claim_job(node: CurrentNode, session: DbSession):
         command=job.command,
         max_duration_seconds=job.max_duration_seconds,
     )
+
+
+@router.get("/{job_id}", response_model=JobPublic)
+async def get_job(
+    job_id: UUID, user: CurrentUser, session: DbSession
+) -> JobPublic:
+    service = JobService(session)
+    job = await service.get_for_user(user, job_id)
+    return JobPublic.model_validate(job)
 
 
 @router.post("/{job_id}/complete", response_model=JobPublic)

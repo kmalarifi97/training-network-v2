@@ -62,3 +62,8 @@ class JobAssignment(BaseModel):
 class CompleteJobRequest(BaseModel):
     exit_code: int = Field(ge=-1024, le=1024)
     error_message: str | None = Field(default=None, max_length=4000)
+
+
+class JobListResponse(BaseModel):
+    items: list[JobPublic]
+    next_cursor: str | None = None

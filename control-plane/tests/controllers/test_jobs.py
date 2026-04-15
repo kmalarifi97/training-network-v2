@@ -223,3 +223,147 @@ async def test_submit_job_max_duration_too_long_returns_422(client):
         },
     )
     assert r.status_code == 422
+
+
+# --- R5: list / detail jobs ----------------------------------------------------
+
+
+async def _submit(client, token, **overrides):
+    body = {
+        "docker_image": "ubuntu:latest",
+        "command": ["echo", "hi"],
+        "gpu_count": 1,
+        "max_duration_seconds": 60,
+    }
+    body.update(overrides)
+    r = await client.post("/api/jobs", headers=auth_headers(token), json=body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+async def test_list_jobs_requires_auth(client):
+    r = await client.get("/api/jobs")
+    assert r.status_code == 401
+
+
+async def test_list_jobs_returns_only_own(client):
+    _, alice_token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=10
+    )
+    _, bob_token = await make_active_user(
+        client, "bob@example.com", credits_gpu_hours=10
+    )
+    a = await _submit(client, alice_token, command=["alice"])
+    await _submit(client, bob_token, command=["bob"])
+
+    r = await client.get("/api/jobs", headers=auth_headers(alice_token))
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert [item["id"] for item in items] == [a["id"]]
+
+
+async def test_list_jobs_filter_by_status(client):
+    _, token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=10
+    )
+    queued = await _submit(client, token, command=["q"])
+    running = await _submit(client, token, command=["r"])
+
+    from sqlalchemy import update
+
+    from app.models.job import Job
+
+    async with SessionLocal() as session:
+        await session.execute(
+            update(Job).where(Job.id == UUID(running["id"])).values(status="running")
+        )
+        await session.commit()
+
+    r = await client.get(
+        "/api/jobs?status=running", headers=auth_headers(token)
+    )
+    assert {i["id"] for i in r.json()["items"]} == {running["id"]}
+
+    r = await client.get(
+        "/api/jobs?status=queued", headers=auth_headers(token)
+    )
+    assert {i["id"] for i in r.json()["items"]} == {queued["id"]}
+
+
+async def test_list_jobs_paginates_with_cursor(client):
+    _, token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=20
+    )
+    for i in range(6):
+        await _submit(client, token, command=[f"job-{i}"])
+
+    page1 = await client.get(
+        "/api/jobs?limit=3", headers=auth_headers(token)
+    )
+    assert page1.status_code == 200
+    body1 = page1.json()
+    assert len(body1["items"]) == 3
+    assert body1["next_cursor"] is not None
+
+    page2 = await client.get(
+        f"/api/jobs?limit=3&cursor={body1['next_cursor']}",
+        headers=auth_headers(token),
+    )
+    body2 = page2.json()
+    assert len(body2["items"]) == 3
+    ids1 = {i["id"] for i in body1["items"]}
+    ids2 = {i["id"] for i in body2["items"]}
+    assert ids1.isdisjoint(ids2)
+
+
+async def test_list_jobs_invalid_cursor_returns_400(client):
+    _, token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=1
+    )
+    r = await client.get(
+        "/api/jobs?cursor=not-a-real-cursor",
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 400
+
+
+async def test_get_job_detail_as_owner_returns_full(client):
+    _, token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=10
+    )
+    j = await _submit(client, token, command=["echo"])
+
+    r = await client.get(
+        f"/api/jobs/{j['id']}", headers=auth_headers(token)
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] == j["id"]
+    assert body["status"] == "queued"
+    assert body["docker_image"] == "ubuntu:latest"
+
+
+async def test_get_job_detail_as_other_user_returns_404(client):
+    _, alice_token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=10
+    )
+    _, bob_token = await make_active_user(
+        client, "bob@example.com", credits_gpu_hours=10
+    )
+    j = await _submit(client, alice_token)
+
+    r = await client.get(
+        f"/api/jobs/{j['id']}", headers=auth_headers(bob_token)
+    )
+    assert r.status_code == 404
+
+
+async def test_get_job_unknown_returns_404(client):
+    _, token = await make_active_user(
+        client, "alice@example.com", credits_gpu_hours=10
+    )
+    r = await client.get(
+        "/api/jobs/00000000-0000-0000-0000-000000000000",
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 404

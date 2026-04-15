@@ -7,15 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import (
     AccountNotActive,
     InsufficientCredits,
-    InvalidJobTransition,
     JobNotFound,
 )
+from app.core.pagination import decode_cursor, encode_cursor
 from app.models.job import Job
 from app.models.node import Node
 from app.models.user import User
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.job_repo import JobRepository
 from app.repositories.user_repo import UserRepository
+from app.services.job_status import (
+    COMPLETED,
+    FAILED,
+    RUNNING,
+    assert_transition,
+)
 
 
 def _bill_gpu_hours(started_at: datetime, completed_at: datetime, gpu_count: int) -> int:
@@ -82,6 +88,8 @@ class JobService:
         existing = await self.job_repo.get_running_for_node(node.id)
         if existing is not None:
             return None
+        # The state-machine guard runs inside the row lock acquired by
+        # claim_next_for_node — we only ever observe queued candidates.
         job = await self.job_repo.claim_next_for_node(node.id, node.gpu_count)
         if job is None:
             await self.session.rollback()
@@ -109,8 +117,8 @@ class JobService:
         job = await self.job_repo.get_by_id(job_id)
         if job is None or job.assigned_node_id != node.id:
             raise JobNotFound(f"job {job_id} not found")
-        if job.status != "running":
-            raise InvalidJobTransition(job.status, "completed")
+        target = COMPLETED if exit_code == 0 else FAILED
+        assert_transition(job.status, target)
 
         completed_at = datetime.now(UTC)
         billed = _bill_gpu_hours(job.started_at or completed_at, completed_at, job.gpu_count)
@@ -134,4 +142,28 @@ class JobService:
         )
         await self.session.commit()
         await self.session.refresh(job)
+        return job
+
+    async def list_for_user(
+        self,
+        owner: User,
+        status: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> tuple[list[Job], str | None]:
+        decoded = decode_cursor(cursor) if cursor else None
+        jobs = await self.job_repo.list_for_user(
+            user_id=owner.id, status=status, cursor=decoded, limit=limit
+        )
+        next_cursor = (
+            encode_cursor(jobs[-1].created_at, jobs[-1].id)
+            if len(jobs) == limit
+            else None
+        )
+        return jobs, next_cursor
+
+    async def get_for_user(self, owner: User, job_id: UUID) -> Job:
+        job = await self.job_repo.get_by_id(job_id)
+        if job is None or job.user_id != owner.id:
+            raise JobNotFound(f"job {job_id} not found")
         return job

@@ -44,6 +44,30 @@ class JobRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_for_user(
+        self,
+        user_id: UUID,
+        status: str | None = None,
+        cursor: tuple[datetime, UUID] | None = None,
+        limit: int = 50,
+    ) -> list[Job]:
+        from sqlalchemy import and_, or_
+
+        stmt = select(Job).where(Job.user_id == user_id)
+        if status is not None:
+            stmt = stmt.where(Job.status == status)
+        if cursor is not None:
+            ts, last_id = cursor
+            stmt = stmt.where(
+                or_(
+                    Job.created_at < ts,
+                    and_(Job.created_at == ts, Job.id < last_id),
+                )
+            )
+        stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def claim_next_for_node(
         self, node_id: UUID, gpu_capacity: int
     ) -> Job | None:
