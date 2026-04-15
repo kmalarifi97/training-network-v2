@@ -172,7 +172,47 @@ class JobService:
         job = await self.job_repo.get_by_id(job_id)
         if job is None or job.user_id != owner.id:
             raise JobNotFound(f"job {job_id} not found")
+        return await self._cancel_or_request_cancel(
+            job,
+            audit_event="job.cancelled",
+            audit_actor=owner,
+            audit_user_id=owner.id,
+            audit_extra=None,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
+    async def admin_force_kill(
+        self,
+        admin: User,
+        job_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> Job:
+        job = await self.job_repo.get_by_id(job_id)
+        if job is None:
+            raise JobNotFound(f"job {job_id} not found")
+        return await self._cancel_or_request_cancel(
+            job,
+            audit_event="admin.job.force_killed",
+            audit_actor=admin,
+            audit_user_id=job.user_id,
+            audit_extra={"target_user_id": str(job.user_id)},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+    async def _cancel_or_request_cancel(
+        self,
+        job: Job,
+        *,
+        audit_event: str,
+        audit_actor: User,
+        audit_user_id: UUID,
+        audit_extra: dict | None,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> Job:
         if job.status in TERMINAL_STATUSES:
             # 409 — completed/failed/cancelled jobs are immutable.
             assert_transition(job.status, CANCELLED)
@@ -184,17 +224,26 @@ class JobService:
                 exit_code=None,
                 error_message="cancelled by user",
             )
-            event_data = {"job_id": str(job.id), "phase": "queued"}
+            phase = "queued"
         elif job.status == RUNNING:
             if job.cancel_requested_at is None:
                 await self.job_repo.request_cancel(job)
-            event_data = {"job_id": str(job.id), "phase": "running"}
+            phase = "running"
         else:
             assert_transition(job.status, CANCELLED)  # safety net
+            phase = job.status
 
+        event_data: dict = {
+            "job_id": str(job.id),
+            "phase": phase,
+            "actor_user_id": str(audit_actor.id),
+            "actor_email": audit_actor.email,
+        }
+        if audit_extra:
+            event_data.update(audit_extra)
         await self.audit_repo.create(
-            event_type="job.cancelled",
-            user_id=owner.id,
+            event_type=audit_event,
+            user_id=audit_user_id,
             event_data=event_data,
             ip_address=ip_address,
             user_agent=user_agent,

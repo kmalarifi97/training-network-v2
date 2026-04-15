@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
 
 from app.core.errors import InvalidPaginationCursor
 from app.core.pagination import InvalidCursorError
-from app.deps import AdminServiceDep, AdminUser
+from app.deps import AdminServiceDep, AdminUser, DbSession
 from app.schemas.admin import (
     AdminActionResponse,
     AdminUserDetail,
@@ -19,6 +19,11 @@ from app.schemas.admin_audit import (
     AdminAuditListResponse,
 )
 from app.schemas.admin_dashboard import AdminDashboardResponse
+from app.schemas.jobs import JobPublic
+from app.schemas.nodes import NodeDetail, NodePublic
+from app.services.job_service import JobService
+from app.services.node_service import NodeService
+from app.services.node_status import compute_node_status
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -173,4 +178,52 @@ async def get_audit_event(
         created_at=event.created_at,
         user_agent=event.user_agent,
         event_data=event.event_data,
+    )
+
+
+@router.post("/jobs/{job_id}/force-kill", response_model=JobPublic)
+async def force_kill_job(
+    job_id: UUID,
+    request: Request,
+    admin: AdminUser,
+    session: DbSession,
+) -> JobPublic:
+    service = JobService(session)
+    job = await service.admin_force_kill(
+        admin=admin,
+        job_id=job_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return JobPublic.model_validate(job)
+
+
+@router.post("/nodes/{node_id}/force-drain", response_model=NodeDetail)
+async def force_drain_node(
+    node_id: UUID,
+    request: Request,
+    admin: AdminUser,
+    session: DbSession,
+) -> NodeDetail:
+    service = NodeService(session)
+    node = await service.admin_force_drain(
+        admin=admin,
+        node_id=node_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    current = await service.get_current_job(node)
+    base = NodePublic(
+        id=node.id,
+        name=node.name,
+        gpu_model=node.gpu_model,
+        gpu_memory_gb=node.gpu_memory_gb,
+        gpu_count=node.gpu_count,
+        status=compute_node_status(node, datetime.now(UTC)),
+        last_seen_at=node.last_seen_at,
+        created_at=node.created_at,
+    )
+    return NodeDetail(
+        **base.model_dump(),
+        current_job_id=current.id if current else None,
     )

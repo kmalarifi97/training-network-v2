@@ -213,6 +213,34 @@ class NodeService:
         await self.session.refresh(node)
         return node
 
+    async def admin_force_drain(
+        self,
+        admin: User,
+        node_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> Node:
+        node = await self.node_repo.get_by_id(node_id)
+        if node is None:
+            raise NodeNotFound(f"node {node_id} not found")
+        if node.status != "draining":
+            await self.node_repo.set_status(node, "draining")
+            await self.audit_repo.create(
+                event_type="admin.node.force_drained",
+                user_id=node.user_id,
+                event_data={
+                    "node_id": str(node.id),
+                    "actor_user_id": str(admin.id),
+                    "actor_email": admin.email,
+                    "target_user_id": str(node.user_id),
+                },
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        await self.session.commit()
+        await self.session.refresh(node)
+        return node
+
     async def delete_node(
         self,
         owner: User,
