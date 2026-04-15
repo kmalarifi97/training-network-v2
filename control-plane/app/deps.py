@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import UserNotFound
 from app.core.security import API_KEY_PREFIX, decode_token
 from app.db import get_session
+from app.models.node import Node
 from app.models.user import User
 from app.services.admin_service import AdminService
 from app.services.api_key_service import ApiKeyService
 from app.services.auth_service import AuthService
+from app.services.node_service import NodeService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -103,3 +105,33 @@ async def require_admin(user: CurrentUser) -> User:
 
 
 AdminUser = Annotated[User, Depends(require_admin)]
+
+
+def get_node_service(session: DbSession) -> NodeService:
+    return NodeService(session)
+
+
+NodeServiceDep = Annotated[NodeService, Depends(get_node_service)]
+
+
+async def get_current_node(
+    node_service: NodeServiceDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Node:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    node = await node_service.authenticate_agent(credentials.credentials)
+    if node is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid agent token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return node
+
+
+CurrentNode = Annotated[Node, Depends(get_current_node)]

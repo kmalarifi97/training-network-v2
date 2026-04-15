@@ -26,6 +26,12 @@ class Node(Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    agent_token_hash: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    agent_token_prefix: Mapped[str | None] = mapped_column(
+        String(12), nullable=True, unique=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -35,6 +35,18 @@ class NotAHost(DomainError):
         super().__init__("User is not authorized to host GPU nodes")
 
 
+class NodeNotFound(DomainError):
+    pass
+
+
+class NodeBusy(DomainError):
+    def __init__(self, node_id: str) -> None:
+        super().__init__(
+            f"Node {node_id} has a running job; drain it before disconnecting"
+        )
+        self.node_id = node_id
+
+
 class ClaimTokenInvalid(DomainError):
     def __init__(self, reason: str) -> None:
         super().__init__(f"Claim token is invalid: {reason}")

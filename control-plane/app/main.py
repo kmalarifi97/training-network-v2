@@ -16,6 +16,8 @@ from app.core.errors import (
     InvalidPaginationCursor,
     JobNotFound,
     JobNotOwned,
+    NodeBusy,
+    NodeNotFound,
     NotAHost,
     UserNotFound,
 )
@@ -158,4 +160,20 @@ async def invalid_job_transition_handler(
             "from_status": exc.from_status,
             "to_status": exc.to_status,
         },
+    )
+
+
+@app.exception_handler(NodeNotFound)
+async def node_not_found_handler(_: Request, exc: NodeNotFound) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(NodeBusy)
+async def node_busy_handler(_: Request, exc: NodeBusy) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(exc), "node_id": exc.node_id},
     )

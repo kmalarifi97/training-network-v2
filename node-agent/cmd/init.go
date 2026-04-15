@@ -27,6 +27,7 @@ type registerPayload struct {
 
 type registerResponse struct {
 	NodeID        string         `json:"node_id"`
+	AgentToken    string         `json:"agent_token"`
 	ConfigPayload map[string]any `json:"config_payload"`
 }
 
@@ -70,6 +71,7 @@ func runInit(args []string) error {
 	cfg := &config.Config{
 		ControlPlaneURL: *controlPlane,
 		NodeID:          resp.NodeID,
+		AgentToken:      resp.AgentToken,
 		Path:            *configPath,
 	}
 	if err := cfg.Save(); err != nil {

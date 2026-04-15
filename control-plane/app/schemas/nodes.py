@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ClaimTokenResponse(BaseModel):
@@ -22,12 +22,11 @@ class RegisterNodeRequest(BaseModel):
 
 class RegisterNodeResponse(BaseModel):
     node_id: UUID
+    agent_token: str
     config_payload: dict[str, Any]
 
 
 class NodePublic(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: UUID
     name: str
     gpu_model: str
@@ -36,3 +35,16 @@ class NodePublic(BaseModel):
     status: str
     last_seen_at: datetime | None
     created_at: datetime
+
+
+class NodeDetail(NodePublic):
+    current_job_id: UUID | None = None
+
+
+class HeartbeatRequest(BaseModel):
+    job_progress: dict[str, Any] | None = None
+
+
+class HeartbeatResponse(BaseModel):
+    received_at: datetime
+    cancel_job_id: UUID | None = None

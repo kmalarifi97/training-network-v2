@@ -1,16 +1,36 @@
-from fastapi import APIRouter, Request, status
+from datetime import UTC, datetime
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.config import settings
-from app.deps import CurrentUser, DbSession
+from app.deps import CurrentNode, CurrentUser, DbSession
 from app.schemas.nodes import (
     ClaimTokenResponse,
+    HeartbeatRequest,
+    HeartbeatResponse,
+    NodeDetail,
     NodePublic,
     RegisterNodeRequest,
     RegisterNodeResponse,
 )
 from app.services.node_service import NodeService
+from app.services.node_status import compute_node_status
 
 router = APIRouter(prefix="/api/nodes", tags=["nodes"])
+
+
+def _public_view(node, computed_status: str) -> NodePublic:
+    return NodePublic(
+        id=node.id,
+        name=node.name,
+        gpu_model=node.gpu_model,
+        gpu_memory_gb=node.gpu_memory_gb,
+        gpu_count=node.gpu_count,
+        status=computed_status,
+        last_seen_at=node.last_seen_at,
+        created_at=node.created_at,
+    )
 
 
 @router.post(
@@ -48,7 +68,7 @@ async def register_node(
     session: DbSession,
 ) -> RegisterNodeResponse:
     service = NodeService(session)
-    node = await service.register_node(
+    node, agent_token = await service.register_node(
         claim_token=payload.claim_token,
         gpu_model=payload.gpu_model,
         gpu_memory_gb=payload.gpu_memory_gb,
@@ -59,9 +79,11 @@ async def register_node(
     )
     return RegisterNodeResponse(
         node_id=node.id,
+        agent_token=agent_token,
         config_payload={
             "control_plane_url": settings.control_plane_public_url,
             "node_id": str(node.id),
+            "agent_token": agent_token,
         },
     )
 
@@ -70,4 +92,41 @@ async def register_node(
 async def list_nodes(user: CurrentUser, session: DbSession) -> list[NodePublic]:
     service = NodeService(session)
     nodes = await service.list_for_user(user)
-    return [NodePublic.model_validate(n) for n in nodes]
+    now = datetime.now(UTC)
+    return [_public_view(n, compute_node_status(n, now)) for n in nodes]
+
+
+@router.get("/{node_id}", response_model=NodeDetail)
+async def get_node(
+    node_id: UUID,
+    user: CurrentUser,
+    session: DbSession,
+) -> NodeDetail:
+    service = NodeService(session)
+    node = await service.get_owned_node(user, node_id)
+    current_job = await service.get_current_job(node)
+    now = datetime.now(UTC)
+    base = _public_view(node, compute_node_status(node, now))
+    return NodeDetail(
+        **base.model_dump(),
+        current_job_id=current_job.id if current_job else None,
+    )
+
+
+@router.post("/{node_id}/heartbeat", response_model=HeartbeatResponse)
+async def heartbeat(
+    node_id: UUID,
+    payload: HeartbeatRequest,
+    node: CurrentNode,
+    session: DbSession,
+) -> HeartbeatResponse:
+    if node.id != node_id:
+        # Authenticated agent does not match the path id — reject so a leaked
+        # token can't be used to spoof another node's status.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Agent token does not match node",
+        )
+    service = NodeService(session)
+    await service.record_heartbeat(node)
+    return HeartbeatResponse(received_at=datetime.now(UTC))
