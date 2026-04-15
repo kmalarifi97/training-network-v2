@@ -141,6 +141,50 @@ async def heartbeat(
     )
 
 
+@router.post("/{node_id}/drain", response_model=NodeDetail)
+async def drain_node(
+    node_id: UUID,
+    request: Request,
+    user: CurrentUser,
+    session: DbSession,
+) -> NodeDetail:
+    service = NodeService(session)
+    node = await service.drain_node(
+        owner=user,
+        node_id=node_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    current = await service.get_current_job(node)
+    base = _public_view(node, compute_node_status(node, datetime.now(UTC)))
+    return NodeDetail(
+        **base.model_dump(),
+        current_job_id=current.id if current else None,
+    )
+
+
+@router.post("/{node_id}/undrain", response_model=NodeDetail)
+async def undrain_node(
+    node_id: UUID,
+    request: Request,
+    user: CurrentUser,
+    session: DbSession,
+) -> NodeDetail:
+    service = NodeService(session)
+    node = await service.undrain_node(
+        owner=user,
+        node_id=node_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    current = await service.get_current_job(node)
+    base = _public_view(node, compute_node_status(node, datetime.now(UTC)))
+    return NodeDetail(
+        **base.model_dump(),
+        current_job_id=current.id if current else None,
+    )
+
+
 @router.post("/{node_id}/metrics", status_code=status.HTTP_204_NO_CONTENT)
 async def push_metrics(
     node_id: UUID,

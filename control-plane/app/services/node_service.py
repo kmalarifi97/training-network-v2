@@ -4,7 +4,13 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.errors import ClaimTokenInvalid, NodeNotFound, NotAHost
+from app.core.errors import (
+    ClaimTokenInvalid,
+    NodeBusy,
+    NodeNotDraining,
+    NodeNotFound,
+    NotAHost,
+)
 from app.core.security import (
     AGENT_TOKEN_PREFIX,
     agent_token_lookup_prefix,
@@ -153,3 +159,105 @@ class NodeService:
         await self.metric_repo.upsert_samples(node.id, samples)
         await self.node_repo.update_last_seen(node)
         await self.session.commit()
+
+    async def drain_node(
+        self,
+        owner: User,
+        node_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        actor: User | None = None,
+        audit_event: str = "node.drained",
+    ) -> Node:
+        node = await self._get_owned_for_actor(owner, node_id, allow_admin=actor)
+        if node.status != "draining":
+            await self.node_repo.set_status(node, "draining")
+            await self.audit_repo.create(
+                event_type=audit_event,
+                user_id=node.user_id,
+                event_data={
+                    "node_id": str(node.id),
+                    "actor_user_id": str((actor or owner).id),
+                    "actor_email": (actor or owner).email,
+                },
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        await self.session.commit()
+        await self.session.refresh(node)
+        return node
+
+    async def undrain_node(
+        self,
+        owner: User,
+        node_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> Node:
+        node = await self.get_owned_node(owner, node_id)
+        if node.status != "draining":
+            raise NodeNotDraining(str(node.id), node.status)
+        await self.node_repo.set_status(node, "online")
+        await self.audit_repo.create(
+            event_type="node.undrained",
+            user_id=node.user_id,
+            event_data={
+                "node_id": str(node.id),
+                "actor_user_id": str(owner.id),
+                "actor_email": owner.email,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await self.session.commit()
+        await self.session.refresh(node)
+        return node
+
+    async def delete_node(
+        self,
+        owner: User,
+        node_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        actor: User | None = None,
+    ) -> Node:
+        node = await self._get_owned_for_actor(owner, node_id, allow_admin=actor)
+        running = await self.job_repo.get_running_for_node(node.id)
+        if running is not None:
+            raise NodeBusy(str(node.id))
+        node_id_str = str(node.id)
+        await self.node_repo.revoke_agent_token(node)
+        await self.audit_repo.create(
+            event_type="node.removed",
+            user_id=node.user_id,
+            event_data={
+                "node_id": node_id_str,
+                "actor_user_id": str((actor or owner).id),
+                "actor_email": (actor or owner).email,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await self.node_repo.delete(node)
+        await self.session.commit()
+        return node
+
+    async def _get_owned_for_actor(
+        self,
+        owner: User,
+        node_id: UUID,
+        *,
+        allow_admin: User | None,
+    ) -> Node:
+        """Owner is the resolved node owner. allow_admin, if set, is the admin
+        actor permitted to bypass ownership; in that case `owner` should equal
+        the node's owner column. We re-fetch and check ownership unless the
+        admin actor is present, in which case we accept any node."""
+        node = await self.node_repo.get_by_id(node_id)
+        if node is None:
+            raise NodeNotFound(f"node {node_id} not found")
+        if allow_admin is not None and allow_admin.is_admin:
+            return node
+        if node.user_id != owner.id:
+            raise NodeNotFound(f"node {node_id} not found")
+        return node

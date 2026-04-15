@@ -47,6 +47,15 @@ class NodeBusy(DomainError):
         self.node_id = node_id
 
 
+class NodeNotDraining(DomainError):
+    def __init__(self, node_id: str, current_status: str) -> None:
+        super().__init__(
+            f"Node {node_id} is not draining (status={current_status})"
+        )
+        self.node_id = node_id
+        self.current_status = current_status
+
+
 class ClaimTokenInvalid(DomainError):
     def __init__(self, reason: str) -> None:
         super().__init__(f"Claim token is invalid: {reason}")

@@ -17,6 +17,7 @@ from app.core.errors import (
     JobNotFound,
     JobNotOwned,
     NodeBusy,
+    NodeNotDraining,
     NodeNotFound,
     NotAHost,
     UserNotFound,
@@ -179,4 +180,18 @@ async def node_busy_handler(_: Request, exc: NodeBusy) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": str(exc), "node_id": exc.node_id},
+    )
+
+
+@app.exception_handler(NodeNotDraining)
+async def node_not_draining_handler(
+    _: Request, exc: NodeNotDraining
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "detail": str(exc),
+            "node_id": exc.node_id,
+            "current_status": exc.current_status,
+        },
     )
