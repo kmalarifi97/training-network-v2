@@ -31,5 +31,19 @@ services:
       timeout: 5s
       retries: 10
 
+  admin-ui:
+    build: ./admin-ui
+    ports:
+      - "3000:3000"
+    depends_on:
+      - control-plane
+
+  client-ui:
+    build: ./client-ui
+    ports:
+      - "3001:3001"
+    depends_on:
+      - control-plane
+
 volumes:
   pgdata:
