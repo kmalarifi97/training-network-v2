@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class JobLogEntryIn(BaseModel):
-    stream: Literal["stdout", "stderr"]
+    stream: Literal["stdout", "stderr", "system"]
     content: str = Field(min_length=1, max_length=64 * 1024)
     sequence: int = Field(ge=0)
 

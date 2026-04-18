@@ -55,6 +55,7 @@ class JobService:
         command: list[str],
         gpu_count: int,
         max_duration_seconds: int,
+        preferred_node_id: UUID | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> Job:
@@ -71,6 +72,7 @@ class JobService:
             command=command,
             gpu_count=gpu_count,
             max_duration_seconds=max_duration_seconds,
+            preferred_node_id=preferred_node_id,
         )
         await self.audit_repo.create(
             event_type="job.submitted",
@@ -80,6 +82,9 @@ class JobService:
                 "docker_image": docker_image,
                 "gpu_count": gpu_count,
                 "max_duration_seconds": max_duration_seconds,
+                "preferred_node_id": (
+                    str(preferred_node_id) if preferred_node_id else None
+                ),
             },
             ip_address=ip_address,
             user_agent=user_agent,

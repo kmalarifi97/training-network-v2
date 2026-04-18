@@ -32,6 +32,7 @@ async def submit_job(
         command=payload.command,
         gpu_count=payload.gpu_count,
         max_duration_seconds=payload.max_duration_seconds,
+        preferred_node_id=payload.preferred_node_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )

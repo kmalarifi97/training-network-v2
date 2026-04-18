@@ -18,6 +18,7 @@ type stubHTTP struct {
 	heartbeat atomic.Int32
 	claim     atomic.Int32
 	complete  atomic.Int32
+	logs      atomic.Int32
 
 	claimResp *http.Response
 }
@@ -42,6 +43,9 @@ func (s *stubHTTP) Do(req *http.Request) (*http.Response, error) {
 	case strings.HasSuffix(req.URL.Path, "/complete"):
 		s.complete.Add(1)
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}"))}, nil
+	case strings.HasSuffix(req.URL.Path, "/logs"):
+		s.logs.Add(1)
+		return &http.Response{StatusCode: 204, Body: io.NopCloser(strings.NewReader(""))}, nil
 	}
 	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}"))}, nil
 }
@@ -52,8 +56,13 @@ type stubRunner struct {
 	called   atomic.Int32
 }
 
-func (r *stubRunner) Run(_ context.Context, _ string, _ []string) (int, error) {
+func (r *stubRunner) Run(_ context.Context, _ string, _ []string, emit LogEmitter) (int, error) {
 	r.called.Add(1)
+	// Exercise the log pump path so Track C has test coverage that lines
+	// actually round-trip through Emit → flush → HTTP POST.
+	emit.Emit("system", "Pulling image (stub)")
+	emit.Emit("stdout", "Hello from stub")
+	emit.Emit("system", "Container exited (stub)")
 	return r.exitCode, r.err
 }
 
@@ -110,7 +119,7 @@ func TestDaemon_RunsClaimedJobAndReportsComplete(t *testing.T) {
 		interval:   10 * time.Millisecond,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 	_ = d.Run(ctx)
 
@@ -119,5 +128,47 @@ func TestDaemon_RunsClaimedJobAndReportsComplete(t *testing.T) {
 	}
 	if stub.complete.Load() < 1 {
 		t.Fatal("complete was never reported")
+	}
+	if stub.logs.Load() < 1 {
+		t.Fatal("log pump never POSTed a batch")
+	}
+}
+
+func TestLogPump_BuffersAndFlushes(t *testing.T) {
+	stub := &stubHTTP{}
+	p := newLogPump(stub, "http://example.com", "gpuagent_x", "job-1")
+	p.flushInterval = 5 * time.Millisecond
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go p.run(ctx)
+
+	p.Emit("system", "Pulling image...")
+	p.Emit("stdout", "Hello, world")
+	p.Emit("stderr", "warn: noisy")
+
+	// Give the flusher time to pick up the batch.
+	time.Sleep(30 * time.Millisecond)
+	cancel()
+
+	if stub.logs.Load() < 1 {
+		t.Fatalf("expected at least one log POST, got %d", stub.logs.Load())
+	}
+}
+
+func TestLogPump_AssignsMonotonicSequences(t *testing.T) {
+	p := newLogPump(&stubHTTP{}, "http://example.com", "gpuagent_x", "job-1")
+	p.Emit("stdout", "a")
+	p.Emit("stdout", "b")
+	p.Emit("stderr", "c")
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.buf) != 3 {
+		t.Fatalf("expected 3 buffered entries, got %d", len(p.buf))
+	}
+	for i, e := range p.buf {
+		if e.Sequence != i {
+			t.Errorf("entry %d has sequence %d, want %d", i, e.Sequence, i)
+		}
 	}
 }

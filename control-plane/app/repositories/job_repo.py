@@ -18,6 +18,7 @@ class JobRepository:
         command: list[str],
         gpu_count: int,
         max_duration_seconds: int,
+        preferred_node_id: UUID | None = None,
     ) -> Job:
         job = Job(
             user_id=user_id,
@@ -26,6 +27,7 @@ class JobRepository:
             gpu_count=gpu_count,
             max_duration_seconds=max_duration_seconds,
             status="queued",
+            preferred_node_id=preferred_node_id,
         )
         self.session.add(job)
         await self.session.flush()
@@ -77,10 +79,20 @@ class JobRepository:
         path never both pick the same job; the loser silently gets the next
         candidate or None. Caller commits the transaction.
         """
+        # A job with preferred_node_id set is only claimable by that node; a
+        # null preferred_node_id means any capable node may take it.
+        from sqlalchemy import or_
+
         stmt = (
             select(Job)
             .where(Job.status == "queued")
             .where(Job.gpu_count <= gpu_capacity)
+            .where(
+                or_(
+                    Job.preferred_node_id.is_(None),
+                    Job.preferred_node_id == node_id,
+                )
+            )
             .order_by(Job.created_at.asc(), Job.id.asc())
             .limit(1)
             .with_for_update(skip_locked=True)

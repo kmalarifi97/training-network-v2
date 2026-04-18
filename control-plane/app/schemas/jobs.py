@@ -19,6 +19,7 @@ class SubmitJobRequest(BaseModel):
     command: list[str] = Field(min_length=1, max_length=64)
     gpu_count: int = Field(ge=1, le=64)
     max_duration_seconds: int = Field(ge=1, le=MAX_JOB_DURATION_SECONDS)
+    preferred_node_id: UUID | None = None
 
     @field_validator("docker_image")
     @classmethod
@@ -47,6 +48,7 @@ class JobPublic(BaseModel):
     exit_code: int | None
     error_message: str | None
     assigned_node_id: UUID | None
+    preferred_node_id: UUID | None
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None

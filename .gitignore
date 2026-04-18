@@ -35,3 +35,6 @@ logs/
 # Claude Code local overrides
 .claude/settings.local.json
 .claude/cache/
+
+# Personal notes (not for distribution)
+LEARNING_ROADMAP.md
