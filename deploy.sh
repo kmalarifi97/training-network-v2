@@ -11,7 +11,8 @@ deploy_control_plane() {
     echo "=== Deploying control plane + UIs (Doha) ==="
     gcloud compute ssh gpunet-server --zone=me-central1-a --project=$PROJECT --command="
         cd ~/gpu-network-v2 && \
-        git pull origin main && \
+        git fetch --all && \
+        git pull && \
         sudo docker compose up --build -d && \
         sleep 10 && \
         curl -s http://localhost:8000/health
