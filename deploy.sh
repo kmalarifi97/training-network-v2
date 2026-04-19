@@ -28,6 +28,11 @@ deploy_agent() {
     cd "$(dirname "$0")/node-agent"
     GOOS=linux GOARCH=amd64 go build -o /tmp/gpu-agent .
 
+    echo "=== Uploading agent binary to control-plane public dir (Doha) ==="
+    gcloud compute scp /tmp/gpu-agent \
+        gpunet-server:~/gpu-network-v2/control-plane/public/gpu-agent-linux-amd64 \
+        --zone=me-central1-a --project=$PROJECT
+
     echo "=== Starting GPU VM if stopped ==="
     gcloud compute instances start gpu-network-v1 --zone=us-west1-a --project=$PROJECT 2>&1 || true
     sleep 10

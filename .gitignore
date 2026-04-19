@@ -16,6 +16,7 @@ htmlcov/
 *.out
 bin/
 gpu-agent
+control-plane/public/gpu-agent-*
 
 # Environment
 .env
