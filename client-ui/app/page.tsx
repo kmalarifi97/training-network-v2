@@ -1,189 +1,40 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-/* ==================================================================
-   MOCK DATA — no API calls. Everything below is what the judges see.
-   ================================================================== */
-
-/* --- GPUs owned by OTHER users, available to rent ----------------- */
-
-interface OwnerGpu {
-  id: string;
-  owner_username: string;
-  owner_city: string;
-  gpu_model: string;
-  gpu_memory_gb: number;
-  gpu_count: number;
-  status: "online" | "offline";
-  last_seen_label: string;
-}
-
-const RENTABLE_GPUS: OwnerGpu[] = [
-  {
-    id: "rent-1",
-    owner_username: "@ahmad.ml",
-    owner_city: "الرياض",
-    gpu_model: "NVIDIA RTX 4080",
-    gpu_memory_gb: 16,
-    gpu_count: 1,
-    status: "online",
-    last_seen_label: "قبل 4 ثوانٍ",
-  },
-  {
-    id: "rent-2",
-    owner_username: "@sara.mlops",
-    owner_city: "جدة",
-    gpu_model: "NVIDIA RTX 3090",
-    gpu_memory_gb: 24,
-    gpu_count: 1,
-    status: "online",
-    last_seen_label: "قبل 9 ثوانٍ",
-  },
-  {
-    id: "rent-3",
-    owner_username: "@abdullah.dev",
-    owner_city: "الدمام",
-    gpu_model: "NVIDIA A4000",
-    gpu_memory_gb: 16,
-    gpu_count: 2,
-    status: "online",
-    last_seen_label: "قبل 11 ثانية",
-  },
-  {
-    id: "rent-4",
-    owner_username: "@norah_ai",
-    owner_city: "الرياض",
-    gpu_model: "NVIDIA RTX 4090",
-    gpu_memory_gb: 24,
-    gpu_count: 1,
-    status: "online",
-    last_seen_label: "قبل 3 ثوانٍ",
-  },
-  {
-    id: "rent-5",
-    owner_username: "@omar.kaust",
-    owner_city: "ثول",
-    gpu_model: "NVIDIA A100",
-    gpu_memory_gb: 40,
-    gpu_count: 1,
-    status: "offline",
-    last_seen_label: "قبل 8 دقائق",
-  },
-];
-
-/* --- MY GPUs (ones I host on the network) ------------------------- */
-
-interface MyGpu {
-  id: string;
-  friendly_name: string;
-  hint: string;
-  gpu_model: string;
-  gpu_memory_gb: number;
-  status: "online" | "offline";
-  last_seen_label: string;
-  total_hours_rented: number;
-}
-
-const MY_GPUS: MyGpu[] = [
-  {
-    id: "me-1",
-    friendly_name: "لابتوبي",
-    hint: "MacBook Pro — الذي أحمله معي",
-    gpu_model: "NVIDIA RTX 3060 Laptop",
-    gpu_memory_gb: 6,
-    status: "online",
-    last_seen_label: "قبل 12 ثانية",
-    total_hours_rented: 3,
-  },
-  {
-    id: "me-2",
-    friendly_name: "حاسوب المنزل",
-    hint: "تجميعة شخصية في غرفة المكتب",
-    gpu_model: "NVIDIA RTX 4070",
-    gpu_memory_gb: 12,
-    status: "online",
-    last_seen_label: "قبل 3 ثوانٍ",
-    total_hours_rented: 12,
-  },
-];
+import {
+  apiFetch,
+  clearToken,
+  getEmail,
+  getToken,
+  setEmail as persistEmail,
+  setToken,
+  type ApiError,
+  type ClaimTokenResponse,
+  type JobLogEntry,
+  type JobLogListResponse,
+  type JobPublic,
+  type NodeMarketplace,
+  type NodePublic,
+  type TokenResponse,
+  type UserResponse,
+} from "@/lib/api";
 
 const DEFAULT_IMAGE = "kmalarifi/llm-finetune:v1";
 const DEFAULT_REPO = "https://github.com/kmalarifi/finetune-demo";
 
-const CURRENT_USER = "kmalarifi@gmail.com";
-const CURRENT_HANDLE = "@kmalarifi";
-
-/* Timed phases drive the scripted progress bar on the running screen. */
-interface ProgressPhase {
-  at: number;
-  pct: number;
-  label: string;
+function handleFromEmail(email: string): string {
+  const prefix = email.includes("@") ? email.split("@", 1)[0] : email;
+  return "@" + prefix;
 }
-
-const PHASES: ProgressPhase[] = [
-  { at: 0, pct: 2, label: "جاري إعداد المهمة..." },
-  { at: 1, pct: 8, label: "تعيين المهمة إلى الـ GPU المختار" },
-  { at: 2, pct: 18, label: "جاري سحب صورة Docker (3.8 جيجابايت)..." },
-  { at: 5, pct: 36, label: "جاري سحب صورة Docker (3.8 جيجابايت)..." },
-  { at: 7, pct: 46, label: "صورة Docker جاهزة" },
-  { at: 8, pct: 52, label: "تشغيل الحاوية مع دعم الـ GPU (--gpus all)" },
-  { at: 9, pct: 58, label: "استنساخ مستودع GitHub وقراءة بيانات التدريب" },
-  { at: 11, pct: 66, label: "تحميل نموذج TinyLlama إلى ذاكرة الـ GPU..." },
-  { at: 13, pct: 72, label: "بدأ التدريب — الحقبة 1 من 3" },
-  { at: 16, pct: 82, label: "التدريب مستمر — الحقبة 2 من 3 (الخسارة ↘ 1.24)" },
-  { at: 19, pct: 92, label: "التدريب مستمر — الحقبة 3 من 3 (الخسارة ↘ 0.62)" },
-  { at: 21, pct: 98, label: "جاري حفظ محوّل LoRA..." },
-  { at: 22, pct: 100, label: "اكتملت المهمة بنجاح ✓" },
-];
-
-interface MockLog {
-  stream: "system" | "stdout" | "stderr";
-  content: string;
-  at: number;
-}
-
-const MOCK_LOGS: MockLog[] = [
-  { stream: "system", content: "▸ تم استلام المهمة (id: a3f2c1e4...)", at: 0 },
-  { stream: "system", content: "▸ تم تعيين المهمة إلى: ahmad.ml (RTX 4080)", at: 1 },
-  { stream: "system", content: "▸ جاري سحب kmalarifi/llm-finetune:v1", at: 2 },
-  { stream: "system", content: "Pulling from kmalarifi/llm-finetune", at: 3 },
-  { stream: "system", content: "58ab47faa891: Already exists", at: 3 },
-  { stream: "system", content: "a55e85e18c83: Downloading  123.4MB / 3.8GB", at: 4 },
-  { stream: "system", content: "a55e85e18c83: Downloading  1.12GB / 3.8GB", at: 5 },
-  { stream: "system", content: "a55e85e18c83: Downloading  2.41GB / 3.8GB", at: 6 },
-  { stream: "system", content: "a55e85e18c83: Pull complete", at: 7 },
-  { stream: "system", content: "▸ الصورة جاهزة (3.8 جيجابايت)", at: 7 },
-  { stream: "system", content: "▸ تشغيل الحاوية مع --gpus all", at: 8 },
-  { stream: "stdout", content: "Cloning into 'repo'...", at: 9 },
-  { stream: "stdout", content: "Loading dataset from data/train.csv...", at: 10 },
-  { stream: "stdout", content: "Loaded 10 training examples", at: 10 },
-  { stream: "stdout", content: "Loading base model TinyLlama/TinyLlama-1.1B-Chat-v1.0...", at: 11 },
-  { stream: "stdout", content: "Loaded in 8.2s", at: 13 },
-  { stream: "stdout", content: "trainable params: 1,703,936 | all params: 1,101,582,336 | trainable%: 0.15", at: 13 },
-  { stream: "stdout", content: "Starting fine-tuning for 3 epochs...", at: 13 },
-  { stream: "stdout", content: "{'loss': 2.4531, 'step': 1}", at: 14 },
-  { stream: "stdout", content: "{'loss': 2.1240, 'step': 2}", at: 15 },
-  { stream: "stdout", content: "{'loss': 1.8834, 'step': 3}", at: 15 },
-  { stream: "stdout", content: "{'loss': 1.5721, 'step': 5}", at: 16 },
-  { stream: "stdout", content: "{'loss': 1.2410, 'step': 10}", at: 17 },
-  { stream: "stdout", content: "{'loss': 0.9823, 'step': 15}", at: 18 },
-  { stream: "stdout", content: "{'loss': 0.7212, 'step': 20}", at: 19 },
-  { stream: "stdout", content: "{'loss': 0.6234, 'step': 25}", at: 20 },
-  { stream: "stdout", content: "{'loss': 0.5812, 'step': 30}", at: 21 },
-  { stream: "stdout", content: "Fine-tuning complete.", at: 21 },
-  { stream: "stdout", content: "Saved LoRA adapter to ./output", at: 22 },
-  { stream: "stdout", content: "DONE.", at: 22 },
-  { stream: "system", content: "▸ خرجت الحاوية (رمز 0)", at: 22 },
-  { stream: "system", content: "▸ اكتمل التدريب — تم استخدام 22 ثانية على GPU", at: 22 },
-];
 
 /* ==================================================================
    State machine + helpers
    ================================================================== */
 
 type Phase =
+  | "loading"
   | "login"
+  | "pending_approval"
   | "rent_browse"
   | "rent_submit"
   | "rent_running"
@@ -194,21 +45,24 @@ type Phase =
 
 /* Which sidebar section each phase belongs to. */
 function sidebarSection(p: Phase): "rent" | "host" | null {
-  if (p === "login") return null;
+  if (p === "login" || p === "loading" || p === "pending_approval") return null;
   if (p.startsWith("rent_")) return "rent";
   return "host";
 }
 
-function streamColor(s: MockLog["stream"]): string {
+function streamColor(s: "stdout" | "stderr" | "system"): string {
   if (s === "stdout") return "text-zinc-100";
   if (s === "stderr") return "text-amber-300";
   return "text-sky-400";
 }
 
-function currentPhase(elapsed: number): ProgressPhase {
-  let cur = PHASES[0];
-  for (const p of PHASES) if (elapsed >= p.at) cur = p;
-  return cur;
+function translateJobStatus(s: string): string {
+  if (s === "queued") return "في قائمة الانتظار";
+  if (s === "running") return "قيد التنفيذ";
+  if (s === "completed") return "اكتملت";
+  if (s === "failed") return "فشلت";
+  if (s === "cancelled") return "ألغيت";
+  return s;
 }
 
 function translateStatus(s: string): string {
@@ -218,40 +72,89 @@ function translateStatus(s: string): string {
   return s;
 }
 
+function timeAgoAr(iso: string | null): string {
+  if (!iso) return "لم يتّصل بعد";
+  const delta = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (delta < 10) return "الآن";
+  if (delta < 60) return `قبل ${delta} ثانية`;
+  const mins = Math.floor(delta / 60);
+  if (mins < 60) return `قبل ${mins} دقيقة`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `قبل ${hrs} ساعة`;
+  const days = Math.floor(hrs / 24);
+  return `قبل ${days} يوم`;
+}
+
 /* ==================================================================
    Root
    ================================================================== */
 
 export default function Home() {
-  const [phase, setPhase] = useState<Phase>("login");
-  const [user, setUser] = useState<string | null>(null);
-  const [selectedRentable, setSelectedRentable] = useState<OwnerGpu | null>(null);
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [user, setUser] = useState<UserResponse | null>(null);
+  const [selectedRentable, setSelectedRentable] = useState<NodeMarketplace | null>(null);
   const [image, setImage] = useState(DEFAULT_IMAGE);
   const [repo, setRepo] = useState(DEFAULT_REPO);
-  const [jobId] = useState(() => "a3f2c1e4b8d9");
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [newGpuName, setNewGpuName] = useState("");
+  const [claimToken, setClaimToken] = useState<ClaimTokenResponse | null>(null);
 
   const logout = useCallback(() => {
+    clearToken();
     setUser(null);
     setSelectedRentable(null);
     setPhase("login");
   }, []);
+
+  const onAuthenticated = useCallback((me: UserResponse) => {
+    setUser(me);
+    setPhase(me.status === "active" ? "rent_browse" : "pending_approval");
+  }, []);
+
+  // On mount: if a JWT is persisted, fetch /api/me to confirm it's still valid
+  // and route based on user.status. Otherwise go to login.
+  useEffect(() => {
+    let cancelled = false;
+    async function boot() {
+      if (!getToken()) {
+        setPhase("login");
+        return;
+      }
+      try {
+        const me = await apiFetch<UserResponse>("/api/me");
+        if (!cancelled) onAuthenticated(me);
+      } catch {
+        if (cancelled) return;
+        clearToken();
+        setPhase("login");
+      }
+    }
+    boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [onAuthenticated]);
 
   return (
     <div className="min-h-screen bg-[#050507] text-zinc-100">
       <BackgroundGrain />
       <Header phase={phase} user={user} onLogout={logout} />
 
-      {phase === "login" ? (
+      {phase === "loading" && <LoadingView />}
+
+      {phase === "login" && (
         <main className="relative mx-auto max-w-6xl px-6 py-10">
-          <LoginView
-            onSuccess={(email) => {
-              setUser(email);
-              setPhase("rent_browse");
-            }}
-          />
+          <LoginView onSuccess={onAuthenticated} />
         </main>
-      ) : (
+      )}
+
+      {phase === "pending_approval" && user && (
+        <main className="relative mx-auto max-w-6xl px-6 py-10">
+          <PendingApprovalView user={user} />
+        </main>
+      )}
+
+      {phase !== "loading" && phase !== "login" && phase !== "pending_approval" && (
         <div className="relative mx-auto max-w-7xl px-6 py-8 flex gap-8">
           <Sidebar phase={phase} onNavigate={setPhase} />
           <main className="flex-1 min-w-0">
@@ -271,25 +174,32 @@ export default function Home() {
                 repo={repo}
                 setRepo={setRepo}
                 onBack={() => setPhase("rent_browse")}
-                onStart={() => setPhase("rent_running")}
+                onStart={(id) => {
+                  setActiveJobId(id);
+                  setPhase("rent_running");
+                }}
               />
             )}
-            {phase === "rent_running" && selectedRentable && (
+            {phase === "rent_running" && selectedRentable && activeJobId && (
               <RunningView
                 gpu={selectedRentable}
                 image={image}
-                jobId={jobId}
+                jobId={activeJobId}
                 onComplete={() => setPhase("rent_done")}
-                onCancel={() => setPhase("rent_browse")}
+                onCancel={() => {
+                  setActiveJobId(null);
+                  setPhase("rent_browse");
+                }}
               />
             )}
-            {phase === "rent_done" && selectedRentable && (
+            {phase === "rent_done" && selectedRentable && activeJobId && (
               <DoneView
                 gpu={selectedRentable}
                 image={image}
-                jobId={jobId}
+                jobId={activeJobId}
                 onAgain={() => setPhase("rent_submit")}
                 onHome={() => {
+                  setActiveJobId(null);
                   setSelectedRentable(null);
                   setPhase("rent_browse");
                 }}
@@ -308,13 +218,20 @@ export default function Home() {
                 name={newGpuName}
                 setName={setNewGpuName}
                 onBack={() => setPhase("my_gpus")}
-                onSubmit={() => setPhase("add_gpu_success")}
+                onSuccess={(data) => {
+                  setClaimToken(data);
+                  setPhase("add_gpu_success");
+                }}
               />
             )}
-            {phase === "add_gpu_success" && (
+            {phase === "add_gpu_success" && claimToken && (
               <AddGpuSuccessView
                 name={newGpuName || "جهازي الجديد"}
-                onDone={() => setPhase("my_gpus")}
+                claim={claimToken}
+                onDone={() => {
+                  setClaimToken(null);
+                  setPhase("my_gpus");
+                }}
               />
             )}
           </main>
@@ -361,7 +278,7 @@ function Header({
   onLogout,
 }: {
   phase: Phase;
-  user: string | null;
+  user: UserResponse | null;
   onLogout: () => void;
 }) {
   const sec = sidebarSection(phase);
@@ -399,8 +316,11 @@ function Header({
         {user && (
           <div className="flex items-center gap-3">
             <div className="text-right leading-tight">
-              <div className="text-xs text-zinc-300">{CURRENT_HANDLE}</div>
-              <div className="text-[10px] text-zinc-600">{user}</div>
+              <div className="text-xs text-zinc-300">{handleFromEmail(user.email)}</div>
+              <div className="text-[10px] text-zinc-600" dir="ltr">{user.email}</div>
+              <div className="text-[10px] text-emerald-400 tabular-nums" dir="ltr">
+                {user.credits_gpu_hours} GPU-ساعة
+              </div>
             </div>
             <button
               onClick={onLogout}
@@ -539,16 +459,99 @@ function Footer() {
    Phase: Login
    ================================================================== */
 
-function LoginView({ onSuccess }: { onSuccess: (email: string) => void }) {
-  const [email, setEmail] = useState("kmalarifi@gmail.com");
-  const [password, setPassword] = useState("••••••••");
-  const [busy, setBusy] = useState(false);
+function LoadingView() {
+  return (
+    <main className="relative mx-auto max-w-6xl px-6 py-10">
+      <div className="flex items-center justify-center mt-24">
+        <div className="text-center">
+          <div className="h-10 w-10 border-4 border-zinc-800 border-t-emerald-400 rounded-full mx-auto animate-spin" />
+          <p className="mt-4 text-xs text-zinc-500">جاري التحقّق من جلستك...</p>
+        </div>
+      </div>
+    </main>
+  );
+}
 
-  function submit(e: React.FormEvent) {
+function PendingApprovalView({ user }: { user: UserResponse }) {
+  return (
+    <div className="max-w-md mx-auto mt-12 text-center">
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-8">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-amber-500/15 border-2 border-amber-500/30 mb-5 text-3xl">
+          ⏳
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight mb-2">حسابك قيد المراجعة</h1>
+        <p className="text-sm text-zinc-400 leading-relaxed mb-5">
+          تم إنشاء حسابك بنجاح وهو الآن في انتظار موافقة المشرف على الشبكة.
+          ستتمكّن من استئجار أو استضافة GPU بمجرد تفعيل الحساب.
+        </p>
+        <div className="rounded-md bg-black/40 border border-zinc-800 p-3 text-xs text-zinc-500 space-y-1">
+          <div className="flex justify-between">
+            <span>البريد المسجّل:</span>
+            <span className="text-zinc-300 font-mono" dir="ltr">{user.email}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>الحالة:</span>
+            <span className="text-amber-300">{user.status === "suspended" ? "موقوف" : "بانتظار الموافقة"}</span>
+          </div>
+        </div>
+        <p className="mt-5 text-[11px] text-zinc-600">
+          عند التفعيل، أعد تحميل الصفحة وسيظهر لك الاستئجار والاستضافة تلقائياً.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const initialEmail = typeof window !== "undefined" ? getEmail() ?? "" : "";
+  const [email, setLocalEmail] = useState(initialEmail);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+    if (mode === "signup" && password.length < 8) {
+      setError("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+      return;
+    }
     setBusy(true);
-    setTimeout(() => onSuccess(email || CURRENT_USER), 400);
+    try {
+      if (mode === "signup") {
+        await apiFetch<UserResponse>("/api/auth/signup", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+      }
+      const tok = await apiFetch<TokenResponse>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      setToken(tok.access_token);
+      persistEmail(email);
+      const me = await apiFetch<UserResponse>("/api/me");
+      onSuccess(me);
+    } catch (err) {
+      const e = err as ApiError;
+      setError(e?.detail || "حدث خطأ — حاول مرّة أخرى");
+      setBusy(false);
+    }
   }
+
+  const heading = mode === "signup" ? "إنشاء حساب جديد" : "تسجيل الدخول";
+  const cta = busy
+    ? mode === "signup"
+      ? "جاري الإنشاء..."
+      : "جاري الدخول..."
+    : mode === "signup"
+      ? "إنشاء الحساب ←"
+      : "دخول ←";
+  const subtitle =
+    mode === "signup"
+      ? "سجّل لتبدأ في تأجير أو استضافة GPU من خلال الشبكة."
+      : "استخدم حسابك للوصول إلى أجهزتك ولبدء استئجار GPU من الشبكة.";
 
   return (
     <div className="max-w-md mx-auto mt-12">
@@ -564,10 +567,8 @@ function LoginView({ onSuccess }: { onSuccess: (email: string) => void }) {
       </div>
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-7 shadow-lg">
-        <h2 className="text-lg font-semibold text-zinc-100 mb-1">تسجيل الدخول</h2>
-        <p className="text-xs text-zinc-500 mb-6">
-          استخدم حسابك للوصول إلى أجهزتك ولبدء استئجار GPU من الشبكة.
-        </p>
+        <h2 className="text-lg font-semibold text-zinc-100 mb-1">{heading}</h2>
+        <p className="text-xs text-zinc-500 mb-6">{subtitle}</p>
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
@@ -576,7 +577,7 @@ function LoginView({ onSuccess }: { onSuccess: (email: string) => void }) {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setLocalEmail(e.target.value)}
               required
               autoFocus
               dir="ltr"
@@ -585,24 +586,56 @@ function LoginView({ onSuccess }: { onSuccess: (email: string) => void }) {
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              كلمة المرور
+              كلمة المرور {mode === "signup" && <span className="text-zinc-600 normal-case">(8 أحرف أو أكثر)</span>}
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={mode === "signup" ? 8 : 1}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-colors"
             />
           </div>
+          {error && (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300" dir="ltr">
+              {error}
+            </div>
+          )}
           <button
             type="submit"
             disabled={busy}
             className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {busy ? "جاري الدخول..." : "دخول →"}
+            {cta}
           </button>
         </form>
+
+        <div className="mt-5 pt-5 border-t border-zinc-800 text-center text-xs text-zinc-500">
+          {mode === "login" ? (
+            <>
+              ليس لديك حساب؟{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setError(null); }}
+                className="text-emerald-400 hover:text-emerald-300 font-medium"
+              >
+                إنشاء حساب جديد
+              </button>
+            </>
+          ) : (
+            <>
+              لديك حساب بالفعل؟{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setError(null); }}
+                className="text-emerald-400 hover:text-emerald-300 font-medium"
+              >
+                تسجيل الدخول
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <p className="text-center text-[11px] text-zinc-600 mt-6">
@@ -616,8 +649,27 @@ function LoginView({ onSuccess }: { onSuccess: (email: string) => void }) {
    Rent — Phase: Browse marketplace
    ================================================================== */
 
-function RentBrowseView({ onPick }: { onPick: (g: OwnerGpu) => void }) {
-  const onlineCount = RENTABLE_GPUS.filter((g) => g.status === "online").length;
+function RentBrowseView({ onPick }: { onPick: (g: NodeMarketplace) => void }) {
+  const [nodes, setNodes] = useState<NodeMarketplace[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiFetch<NodeMarketplace[]>("/api/nodes/marketplace");
+      setNodes(data);
+      setError(null);
+    } catch (err) {
+      setError((err as ApiError)?.detail || "تعذّر تحميل السوق");
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 10_000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const total = nodes?.length ?? 0;
   return (
     <div>
       <div className="flex items-end justify-between mb-7 gap-4 flex-wrap">
@@ -629,16 +681,40 @@ function RentBrowseView({ onPick }: { onPick: (g: OwnerGpu) => void }) {
           </p>
         </div>
         <div className="text-xs text-zinc-500 tabular-nums">
-          <span className="text-emerald-400 font-semibold">{onlineCount}</span> من{" "}
-          {RENTABLE_GPUS.length} متصل الآن
+          <span className="text-emerald-400 font-semibold">{total}</span> متصل الآن
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {RENTABLE_GPUS.map((g) => (
-          <RentableCard key={g.id} gpu={g} onPick={onPick} />
-        ))}
-      </div>
+      {error && (
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
+      {nodes === null && !error && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
+          جاري تحميل السوق...
+        </div>
+      )}
+
+      {nodes !== null && nodes.length === 0 && !error && (
+        <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-10 text-center">
+          <div className="text-4xl mb-3">🌙</div>
+          <h3 className="text-base font-semibold text-zinc-200 mb-2">لا توجد أجهزة متصلة الآن</h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto leading-relaxed">
+            جميع أجهزة الشبكة في حالة غير متصلة حالياً. انتظر قليلاً، أو شارك جهازك
+            الخاص من تبويب «إضافة GPU للتأجير» لتملأ السوق بنفسك.
+          </p>
+        </div>
+      )}
+
+      {nodes !== null && nodes.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {nodes.map((g) => (
+            <RentableCard key={g.id} gpu={g} onPick={onPick} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -647,10 +723,11 @@ function RentableCard({
   gpu,
   onPick,
 }: {
-  gpu: OwnerGpu;
-  onPick: (g: OwnerGpu) => void;
+  gpu: NodeMarketplace;
+  onPick: (g: NodeMarketplace) => void;
 }) {
   const available = gpu.status === "online";
+  const initials = gpu.host_handle.replace(/^@/, "").slice(0, 2).toUpperCase();
   return (
     <div
       className={`group relative rounded-xl border p-5 transition-all ${
@@ -663,18 +740,20 @@ function RentableCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-500/40 to-violet-500/40 flex items-center justify-center text-[11px] font-bold text-zinc-100 flex-shrink-0">
-              {gpu.owner_username.slice(1, 3).toUpperCase()}
+              {initials}
             </div>
             <div className="min-w-0">
               <div
                 className="font-bold text-zinc-100 text-sm truncate"
                 dir="ltr"
               >
-                {gpu.owner_username}
+                {gpu.host_handle}
               </div>
             </div>
           </div>
-          <div className="text-xs text-zinc-500">{gpu.owner_city}</div>
+          <div className="text-xs text-zinc-500 font-mono truncate" dir="ltr">
+            {gpu.name}
+          </div>
         </div>
         <StatusPill status={gpu.status} />
       </div>
@@ -683,7 +762,7 @@ function RentableCard({
         <Row label="كرت الشاشة" value={gpu.gpu_model} mono />
         <Row label="ذاكرة الـ GPU" value={`${gpu.gpu_memory_gb} جيجابايت`} />
         <Row label="عدد وحدات الـ GPU" value={`${gpu.gpu_count}`} />
-        <Row label="آخر نبضة" value={gpu.last_seen_label} muted />
+        <Row label="آخر نبضة" value={timeAgoAr(gpu.last_seen_at)} muted />
       </div>
 
       <button
@@ -755,26 +834,53 @@ function RentSubmitView({
   onBack,
   onStart,
 }: {
-  gpu: OwnerGpu;
+  gpu: NodeMarketplace;
   image: string;
   setImage: (v: string) => void;
   repo: string;
   setRepo: (v: string) => void;
   onBack: () => void;
-  onStart: () => void;
+  onStart: (jobId: string) => void;
 }) {
   const [epochs, setEpochs] = useState(3);
   const [minutes, setMinutes] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const cmdPreview = useMemo(
+  const shellCmd = useMemo(
     () =>
-      `bash -c "git clone --depth 1 ${repo} repo && cd repo && python3 train.py --epochs ${epochs}"`,
+      `git clone --depth 1 ${repo} repo && cd repo && python3 train.py --epochs ${epochs}`,
     [repo, epochs],
   );
+  const cmdPreview = `bash -c "${shellCmd}"`;
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    onStart();
+    setError(null);
+    setBusy(true);
+    try {
+      const job = await apiFetch<JobPublic>("/api/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          docker_image: image,
+          command: ["bash", "-c", shellCmd],
+          gpu_count: 1,
+          max_duration_seconds: minutes * 60,
+          preferred_node_id: gpu.id,
+        }),
+      });
+      onStart(job.id);
+    } catch (err) {
+      const e = err as ApiError;
+      if (e?.status === 402) {
+        setError("رصيدك غير كافٍ لتشغيل هذه المهمة. تواصل مع المشرف لزيادة الرصيد.");
+      } else if (e?.status === 422) {
+        setError("صيغة الصورة أو الأمر غير صحيحة. راجع صيغة اسم الصورة (lowercase).");
+      } else {
+        setError(e?.detail || "فشل إرسال المهمة — حاول مرّة أخرى");
+      }
+      setBusy(false);
+    }
   }
 
   return (
@@ -792,7 +898,7 @@ function RentSubmitView({
           <span>على GPU:</span>
           <span className="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-emerald-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            <span dir="ltr">{gpu.owner_username}</span>
+            <span dir="ltr">{gpu.host_handle}</span>
           </span>
           <span className="text-zinc-600">·</span>
           <span className="font-mono text-xs" dir="ltr">
@@ -873,11 +979,18 @@ function RentSubmitView({
           </p>
         </div>
 
+        {error && (
+          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {error}
+          </div>
+        )}
+
         <button
           type="submit"
-          className="w-full rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-emerald-500/20"
+          disabled={busy}
+          className="w-full rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          🚀 ابدأ التنفيذ على GPU الخاص بـ {gpu.owner_username}
+          {busy ? "جاري الإرسال..." : `🚀 ابدأ التنفيذ على GPU الخاص بـ ${gpu.host_handle}`}
         </button>
       </form>
     </div>
@@ -915,40 +1028,87 @@ function RunningView({
   onComplete,
   onCancel,
 }: {
-  gpu: OwnerGpu;
+  gpu: NodeMarketplace;
   image: string;
   jobId: string;
   onComplete: () => void;
   onCancel: () => void;
 }) {
-  const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(Date.now());
+  const [job, setJob] = useState<JobPublic | null>(null);
+  const [logs, setLogs] = useState<JobLogEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const cursorRef = useRef<number>(-1);
   const stdoutRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef<HTMLDivElement>(null);
 
+  // Poll job status every 3s; exit to DoneView when terminal.
   useEffect(() => {
-    startRef.current = Date.now();
-    const t = setInterval(() => {
-      const s = (Date.now() - startRef.current) / 1000;
-      setElapsed(s);
-      if (s >= 22.5) {
-        clearInterval(t);
-        setTimeout(onComplete, 900);
+    let cancelled = false;
+    async function pollJob() {
+      try {
+        const j = await apiFetch<JobPublic>(`/api/jobs/${jobId}`);
+        if (cancelled) return;
+        setJob(j);
+        if (j.status === "completed" || j.status === "failed" || j.status === "cancelled") {
+          onComplete();
+        }
+      } catch (err) {
+        if (!cancelled) setError((err as ApiError)?.detail || "فقد الاتصال بالمهمة");
       }
-    }, 100);
-    return () => clearInterval(t);
-  }, [onComplete]);
+    }
+    pollJob();
+    const t = setInterval(pollJob, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [jobId, onComplete]);
 
-  const phase = currentPhase(elapsed);
-  const pct = Math.min(100, Math.round(phase.pct));
-  const visible = MOCK_LOGS.filter((l) => l.at <= elapsed);
-  const stdoutLogs = visible.filter((l) => l.stream !== "system");
-  const systemLogs = visible.filter((l) => l.stream === "system");
+  // Poll logs every 2s using after_sequence cursor.
+  useEffect(() => {
+    let cancelled = false;
+    async function pollLogs() {
+      try {
+        const res = await apiFetch<JobLogListResponse>(
+          `/api/jobs/${jobId}/logs?after_sequence=${cursorRef.current}&limit=500`,
+        );
+        if (cancelled || res.items.length === 0) return;
+        setLogs((prev) => [...prev, ...res.items]);
+        cursorRef.current = Math.max(
+          cursorRef.current,
+          ...res.items.map((l) => l.sequence),
+        );
+      } catch {
+        /* swallow log errors; status poll surfaces any real failure */
+      }
+    }
+    pollLogs();
+    const t = setInterval(pollLogs, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [jobId]);
+
+  async function doCancel() {
+    setCancelling(true);
+    try {
+      await apiFetch(`/api/jobs/${jobId}/cancel`, { method: "POST" });
+      onCancel();
+    } catch (err) {
+      setError((err as ApiError)?.detail || "فشل إلغاء المهمة");
+      setCancelling(false);
+    }
+  }
+
+  const stdoutLogs = useMemo(() => logs.filter((l) => l.stream !== "system"), [logs]);
+  const systemLogs = useMemo(() => logs.filter((l) => l.stream === "system"), [logs]);
 
   useEffect(() => {
     if (stdoutRef.current) stdoutRef.current.scrollTop = stdoutRef.current.scrollHeight;
     if (systemRef.current) systemRef.current.scrollTop = systemRef.current.scrollHeight;
-  }, [visible.length]);
+  }, [logs.length]);
 
   const latestLoss = useMemo(() => {
     for (let i = stdoutLogs.length - 1; i >= 0; i--) {
@@ -957,6 +1117,24 @@ function RunningView({
     }
     return "—";
   }, [stdoutLogs]);
+
+  const status = job?.status ?? "queued";
+  const elapsed = useMemo(() => {
+    if (!job?.started_at) return 0;
+    const end = job.completed_at ?? new Date().toISOString();
+    return Math.max(0, (new Date(end).getTime() - new Date(job.started_at).getTime()) / 1000);
+  }, [job]);
+
+  const statusPillClass =
+    status === "running"
+      ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
+      : status === "queued"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+        : status === "completed"
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          : status === "failed"
+            ? "border-red-500/30 bg-red-500/10 text-red-300"
+            : "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
 
   return (
     <div>
@@ -969,15 +1147,15 @@ function RunningView({
                 #{jobId.slice(0, 8)}
               </span>
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
-              قيد التنفيذ
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${statusPillClass}`}>
+              <span className={`h-1.5 w-1.5 rounded-full bg-current ${status === "running" || status === "queued" ? "animate-pulse" : ""}`} />
+              {translateJobStatus(status)}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-zinc-400 flex-wrap">
             <span>على GPU:</span>
             <span className="text-emerald-400 font-medium" dir="ltr">
-              {gpu.owner_username}
+              {gpu.host_handle}
             </span>
             <span className="text-zinc-600">·</span>
             <span className="font-mono text-xs" dir="ltr">
@@ -990,48 +1168,58 @@ function RunningView({
           </div>
         </div>
         <button
-          onClick={onCancel}
-          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-1.5 text-xs text-red-300 hover:bg-red-500/20 transition-colors"
+          onClick={doCancel}
+          disabled={cancelling || status !== "queued" && status !== "running"}
+          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-1.5 text-xs text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          إلغاء المهمة
+          {cancelling ? "جاري الإلغاء..." : "إلغاء المهمة"}
         </button>
       </div>
 
+      {error && (
+        <div className="mb-5 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 mb-5">
         <div className="flex items-baseline justify-between mb-3">
-          <div className="text-sm text-zinc-300 font-medium">{phase.label}</div>
-          <div className="text-3xl font-bold tabular-nums text-emerald-400" dir="ltr">
-            {pct}%
+          <div className="text-sm text-zinc-300 font-medium">
+            {status === "queued"
+              ? "المهمة في الانتظار — بانتظار الوكيل ليستلمها..."
+              : status === "running"
+                ? "المهمة تعمل على جهاز المضيف"
+                : `الحالة: ${translateJobStatus(status)}`}
+          </div>
+          <div className="text-xs tabular-nums text-zinc-500" dir="ltr">
+            {elapsed > 0 ? `${elapsed.toFixed(1)}s` : ""}
           </div>
         </div>
         <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-l from-emerald-400 via-emerald-500 to-cyan-500 transition-all duration-300 ease-out"
-            style={{ width: `${pct}%` }}
+            className={`h-full ${
+              status === "running"
+                ? "bg-gradient-to-l from-emerald-400 via-emerald-500 to-cyan-500 animate-pulse w-full"
+                : status === "completed"
+                  ? "bg-emerald-500 w-full"
+                  : status === "failed" || status === "cancelled"
+                    ? "bg-red-500 w-full"
+                    : "bg-zinc-700 w-1/6"
+            }`}
           />
-        </div>
-        <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-zinc-500">
-          <PhaseMilestone label="سحب الصورة" done={pct >= 46} active={pct < 46} />
-          <PhaseMilestone label="بدء الحاوية" done={pct >= 58} active={pct >= 46 && pct < 58} />
-          <PhaseMilestone label="تحميل النموذج" done={pct >= 72} active={pct >= 58 && pct < 72} />
-          <PhaseMilestone label="التدريب" done={pct >= 98} active={pct >= 72 && pct < 98} />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <HighlightCard label="الوقت المنقضي" value={`${elapsed.toFixed(1)} ث`} tone="info" />
+        <HighlightCard label="الوقت المنقضي" value={elapsed > 0 ? `${elapsed.toFixed(1)} ث` : "—"} tone="info" />
         <HighlightCard label="آخر قيمة خسارة" value={latestLoss} tone="info" />
-        <HighlightCard
-          label="استخدام الـ GPU"
-          value={elapsed > 12 ? "92٪" : elapsed > 8 ? "14٪" : "0٪"}
-          tone="ok"
-        />
+        <HighlightCard label="عدد الأسطر" value={String(logs.length)} tone="muted" />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 h-[420px]">
         <LogPanel
           title="مخرجات الحاوية"
-          subtitle="stdout و stderr من سكربت التدريب"
+          subtitle="stdout و stderr من الحاوية"
           logs={stdoutLogs}
           emptyHint="في انتظار بدء الحاوية..."
           refProp={stdoutRef}
@@ -1045,25 +1233,6 @@ function RunningView({
           tintSystem
         />
       </div>
-    </div>
-  );
-}
-
-function PhaseMilestone({
-  label,
-  active,
-  done,
-}: {
-  label: string;
-  active: boolean;
-  done: boolean;
-}) {
-  const color = done ? "text-emerald-400" : active ? "text-sky-400" : "text-zinc-600";
-  const dot = done ? "bg-emerald-400" : active ? "bg-sky-400 animate-pulse" : "bg-zinc-700";
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-      <span className={color}>{label}</span>
     </div>
   );
 }
@@ -1105,7 +1274,7 @@ function LogPanel({
 }: {
   title: string;
   subtitle: string;
-  logs: MockLog[];
+  logs: JobLogEntry[];
   emptyHint: string;
   tintSystem?: boolean;
   refProp?: React.RefObject<HTMLDivElement | null>;
@@ -1159,33 +1328,90 @@ function DoneView({
   onAgain,
   onHome,
 }: {
-  gpu: OwnerGpu;
+  gpu: NodeMarketplace;
   image: string;
   jobId: string;
   onAgain: () => void;
   onHome: () => void;
 }) {
+  const [job, setJob] = useState<JobPublic | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<JobPublic>(`/api/jobs/${jobId}`)
+      .then(setJob)
+      .catch((err) => setError((err as ApiError)?.detail || "تعذّر تحميل تفاصيل المهمة"));
+  }, [jobId]);
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
+        <p className="text-sm text-red-300 mb-4">{error}</p>
+        <button
+          onClick={onHome}
+          className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm text-zinc-200"
+        >
+          العودة إلى قائمة الـ GPU
+        </button>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
+        جاري تحميل ملخّص المهمة...
+      </div>
+    );
+  }
+
+  const success = job.status === "completed" && job.exit_code === 0;
+  const durationSeconds =
+    job.started_at && job.completed_at
+      ? (new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000
+      : null;
+
+  const headlineClass = success
+    ? "bg-emerald-500/15 border-emerald-500/40"
+    : job.status === "cancelled"
+      ? "bg-zinc-500/15 border-zinc-500/40"
+      : "bg-red-500/15 border-red-500/40";
+  const headlineIconClass = success
+    ? "text-emerald-400"
+    : job.status === "cancelled"
+      ? "text-zinc-300"
+      : "text-red-400";
+  const headline = success
+    ? "اكتملت المهمة بنجاح"
+    : job.status === "cancelled"
+      ? "تم إلغاء المهمة"
+      : "فشلت المهمة";
+  const statusTone: HighlightTone = success ? "ok" : job.status === "cancelled" ? "muted" : "err";
+
   return (
     <div>
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500/15 border-2 border-emerald-500/40 mb-5">
-          <svg
-            className="h-10 w-10 text-emerald-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={3}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+        <div className={`inline-flex items-center justify-center h-20 w-20 rounded-full border-2 mb-5 ${headlineClass}`}>
+          {success ? (
+            <svg className={`h-10 w-10 ${headlineIconClass}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : job.status === "cancelled" ? (
+            <svg className={`h-10 w-10 ${headlineIconClass}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className={`h-10 w-10 ${headlineIconClass}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          )}
         </div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">اكتملت المهمة بنجاح</h1>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">{headline}</h1>
         <p className="text-sm text-zinc-400">
-          تم تدريب النموذج على GPU التابع لـ{" "}
+          تم التنفيذ على GPU التابع لـ{" "}
           <span className="text-emerald-400 font-mono" dir="ltr">
-            {gpu.owner_username}
-          </span>{" "}
-          وحفظ محوّل LoRA بنجاح.
+            {gpu.host_handle}
+          </span>
         </p>
       </div>
 
@@ -1195,32 +1421,50 @@ function DoneView({
         </div>
         <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
           <SummaryRow label="رقم المهمة" value={`#${jobId.slice(0, 8)}`} mono />
-          <SummaryRow label="الحالة" value="اكتملت" tone="ok" />
-          <SummaryRow label="مالك الـ GPU" value={gpu.owner_username} mono />
+          <SummaryRow label="الحالة" value={translateJobStatus(job.status)} tone={statusTone} />
+          <SummaryRow label="مالك الـ GPU" value={gpu.host_handle} mono />
           <SummaryRow label="كرت الشاشة" value={gpu.gpu_model} mono />
-          <SummaryRow label="المدة الفعلية" value="22.4 ثانية" mono />
-          <SummaryRow label="استهلاك الذاكرة" value={`4.2 / ${gpu.gpu_memory_gb} جيجا`} mono />
-          <SummaryRow label="الخسارة الأولى" value="2.4531" mono />
-          <SummaryRow label="الخسارة النهائية" value="0.5812" tone="ok" mono />
-          <SummaryRow label="عدد الخطوات" value="30 (3 حقبات)" />
+          <SummaryRow
+            label="المدة الفعلية"
+            value={durationSeconds !== null ? `${durationSeconds.toFixed(1)} ثانية` : "—"}
+            mono
+          />
+          <SummaryRow
+            label="رمز الخروج"
+            value={job.exit_code !== null ? String(job.exit_code) : "—"}
+            mono
+            tone={job.exit_code === 0 ? "ok" : job.exit_code === null ? "muted" : "err"}
+          />
+          <SummaryRow label="عدد GPUs" value={String(job.gpu_count)} />
           <SummaryRow label="الحاوية" value={image} mono />
         </div>
       </div>
 
-      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 mb-8">
-        <div className="flex items-start gap-3">
-          <div className="h-6 w-6 rounded bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs flex-shrink-0">
-            ✓
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-emerald-200">تم حفظ النموذج داخل الحاوية</div>
-            <div className="text-xs text-emerald-400/80 mt-1.5 leading-relaxed">
-              محوّل LoRA محفوظ في <span className="font-mono" dir="ltr">./output</span>. هذا ملف
-              صغير (~2 ميجا) يحتوي على التعديلات التي تعلّمها النموذج من بيانات التدريب.
+      {job.error_message && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 mb-5">
+          <div className="text-sm font-medium text-red-200 mb-2">رسالة الخطأ</div>
+          <pre className="text-xs text-red-300/90 font-mono whitespace-pre-wrap break-all" dir="ltr">
+            {job.error_message}
+          </pre>
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 mb-8">
+          <div className="flex items-start gap-3">
+            <div className="h-6 w-6 rounded bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs flex-shrink-0">
+              ✓
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-emerald-200">خرجت الحاوية برمز 0</div>
+              <div className="text-xs text-emerald-400/80 mt-1.5 leading-relaxed">
+                أي ناتج أردت حفظه يجب أن تكون قد رفعته داخل الحاوية إلى تخزين خارجي
+                (S3, GitHub, webhook). لا نحتفظ بأي ملفات بعد خروج الحاوية.
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <button
@@ -1277,8 +1521,28 @@ function SummaryRow({
    ================================================================== */
 
 function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
-  const onlineCount = MY_GPUS.filter((g) => g.status === "online").length;
-  const totalHours = MY_GPUS.reduce((s, g) => s + g.total_hours_rented, 0);
+  const [nodes, setNodes] = useState<NodePublic[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiFetch<NodePublic[]>("/api/nodes");
+      setNodes(data);
+      setError(null);
+    } catch (err) {
+      setError((err as ApiError)?.detail || "تعذّر تحميل قائمة أجهزتك");
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 10_000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const total = nodes?.length ?? 0;
+  const onlineCount = nodes?.filter((g) => g.status === "online").length ?? 0;
+
   return (
     <div>
       <div className="flex items-end justify-between mb-7 gap-4 flex-wrap">
@@ -1298,28 +1562,57 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
         </button>
       </div>
 
-      {/* Small stats header */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <HighlightCard label="عدد أجهزتي" value={String(MY_GPUS.length)} tone="info" />
+        <HighlightCard label="عدد أجهزتي" value={String(total)} tone="info" />
         <HighlightCard
           label="المتصلة الآن"
-          value={`${onlineCount} / ${MY_GPUS.length}`}
+          value={total ? `${onlineCount} / ${total}` : "—"}
           tone="ok"
         />
         <HighlightCard
-          label="ساعات GPU مُجمَّعة"
-          value={`${totalHours} ساعة`}
-          tone="info"
+          label="حالة الجلب"
+          value={error ? "خطأ" : nodes === null ? "جاري..." : "حديث"}
+          tone={error ? "err" : nodes === null ? "muted" : "info"}
         />
       </div>
 
-      <div className="space-y-3">
-        {MY_GPUS.map((g) => (
-          <MyGpuRow key={g.id} gpu={g} />
-        ))}
-      </div>
+      {error && (
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
 
-      {/* Hint panel */}
+      {nodes === null && !error && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
+          جاري تحميل قائمة أجهزتك...
+        </div>
+      )}
+
+      {nodes !== null && nodes.length === 0 && !error && (
+        <div className="rounded-xl border border-dashed border-emerald-500/20 bg-emerald-500/5 p-10 text-center">
+          <div className="text-4xl mb-3">🖥️</div>
+          <h3 className="text-base font-semibold text-zinc-100 mb-2">لم تضف أي جهاز بعد</h3>
+          <p className="text-xs text-zinc-400 mb-5 max-w-sm mx-auto leading-relaxed">
+            اضغط «إضافة GPU جديد» لتوليد رمز تسجيل وتشغيل الوكيل على جهازك. لا نخزّن أي
+            بيانات على الجهاز — فقط يتصل بالشبكة عند الحاجة.
+          </p>
+          <button
+            onClick={onAddNew}
+            className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
+          >
+            إضافة GPU جديد ←
+          </button>
+        </div>
+      )}
+
+      {nodes !== null && nodes.length > 0 && (
+        <div className="space-y-3">
+          {nodes.map((g) => (
+            <MyGpuRow key={g.id} node={g} />
+          ))}
+        </div>
+      )}
+
       <div className="mt-8 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/20 p-5 flex items-start gap-4">
         <div className="h-9 w-9 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg flex-shrink-0">
           💡
@@ -1339,7 +1632,7 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
   );
 }
 
-function MyGpuRow({ gpu }: { gpu: MyGpu }) {
+function MyGpuRow({ node }: { node: NodePublic }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 flex items-center gap-5">
       <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 flex items-center justify-center text-xl flex-shrink-0">
@@ -1347,40 +1640,29 @@ function MyGpuRow({ gpu }: { gpu: MyGpu }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2.5 mb-1">
-          <h3 className="font-bold text-zinc-100 text-base">{gpu.friendly_name}</h3>
-          <StatusPill status={gpu.status} />
+          <h3 className="font-bold text-zinc-100 text-base">{node.name}</h3>
+          <StatusPill status={node.status} />
         </div>
-        <div className="text-xs text-zinc-500 mb-2">{gpu.hint}</div>
-        <div className="flex gap-5 text-xs text-zinc-400 flex-wrap">
+        <div className="flex gap-5 text-xs text-zinc-400 flex-wrap mt-2">
           <span>
             <span className="text-zinc-600">كرت: </span>
             <span className="font-mono text-zinc-300" dir="ltr">
-              {gpu.gpu_model}
+              {node.gpu_model}
             </span>
           </span>
           <span>
             <span className="text-zinc-600">ذاكرة: </span>
-            <span className="text-zinc-300">{gpu.gpu_memory_gb} جيجا</span>
+            <span className="text-zinc-300">{node.gpu_memory_gb} جيجا</span>
           </span>
           <span>
-            <span className="text-zinc-600">ساعات تم تأجيرها: </span>
-            <span className="text-emerald-400 font-semibold tabular-nums">
-              {gpu.total_hours_rented}
-            </span>
+            <span className="text-zinc-600">عدد GPUs: </span>
+            <span className="text-zinc-300">{node.gpu_count}</span>
           </span>
           <span>
             <span className="text-zinc-600">آخر نبضة: </span>
-            <span className="text-zinc-400">{gpu.last_seen_label}</span>
+            <span className="text-zinc-400">{timeAgoAr(node.last_seen_at)}</span>
           </span>
         </div>
-      </div>
-      <div className="flex gap-2 flex-shrink-0">
-        <button className="text-xs text-zinc-500 hover:text-zinc-300 px-3 py-1.5 rounded-md hover:bg-zinc-800 transition-colors">
-          تفاصيل
-        </button>
-        <button className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-md hover:bg-red-500/10 transition-colors">
-          إزالة
-        </button>
       </div>
     </div>
   );
@@ -1394,19 +1676,37 @@ function AddGpuFormView({
   name,
   setName,
   onBack,
-  onSubmit,
+  onSuccess,
 }: {
   name: string;
   setName: (v: string) => void;
   onBack: () => void;
-  onSubmit: () => void;
+  onSuccess: (claim: ClaimTokenResponse) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     setBusy(true);
-    setTimeout(onSubmit, 500);
+    try {
+      const claim = await apiFetch<ClaimTokenResponse>(
+        "/api/nodes/claim-tokens",
+        { method: "POST" },
+      );
+      onSuccess(claim);
+    } catch (err) {
+      const e = err as ApiError;
+      if (e?.status === 403) {
+        setError(
+          "حسابك غير مفعّل لاستضافة GPU. تواصل مع المشرف لتفعيل صلاحية الاستضافة.",
+        );
+      } else {
+        setError(e?.detail || "فشل إنشاء رمز التسجيل — حاول مرّة أخرى");
+      }
+      setBusy(false);
+    }
   }
 
   return (
@@ -1462,6 +1762,12 @@ function AddGpuFormView({
           </div>
         </div>
 
+        {error && (
+          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 leading-relaxed">
+            {error}
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={busy || !name.trim()}
@@ -1480,16 +1786,30 @@ function AddGpuFormView({
 
 function AddGpuSuccessView({
   name,
+  claim,
   onDone,
 }: {
   name: string;
+  claim: ClaimTokenResponse;
   onDone: () => void;
 }) {
-  const claimToken = "gpuclaim_Vq3k7pNxR8mLwF2aZbY9sTcH4gJ6dEuK";
-  const installCmd = `gpu-agent init \\
-  --control-plane=http://34.18.164.66:8000 \\
-  --claim-token=${claimToken} \\
-  --name="${name}"`;
+  const claimTokenStr = claim.token;
+  const controlPlane = useMemo(() => {
+    const m = claim.install_command.match(/--control-plane=(\S+)/);
+    return m ? m[1] : "http://34.18.164.66:8000";
+  }, [claim.install_command]);
+  const installCmd = `# 1 — Install the agent (once per machine)
+curl -fsSL ${controlPlane}/public/install.sh | sudo bash
+
+# 2 — Register this machine with your claim token
+sudo gpu-agent init \\
+    --config=/etc/gpu-agent/config.json \\
+    --control-plane=${controlPlane} \\
+    --claim-token=${claimTokenStr} \\
+    --name="${name}"
+
+# 3 — Start the service (survives reboots)
+sudo systemctl enable --now gpu-agent`;
   const [copied, setCopied] = useState(false);
 
   function copy() {
@@ -1554,7 +1874,7 @@ function AddGpuSuccessView({
               dir="ltr"
               className="block rounded-md bg-black/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 font-mono text-start break-all"
             >
-              {claimToken}
+              {claimTokenStr}
             </code>
           </div>
         </div>
