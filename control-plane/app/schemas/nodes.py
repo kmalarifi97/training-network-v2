@@ -41,6 +41,10 @@ class NodeDetail(NodePublic):
     current_job_id: UUID | None = None
 
 
+class NodeMarketplaceView(NodePublic):
+    host_handle: str
+
+
 class HeartbeatRequest(BaseModel):
     job_progress: dict[str, Any] | None = None
 

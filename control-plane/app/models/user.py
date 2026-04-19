@@ -18,7 +18,7 @@ class User(Base):
     can_host: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     can_rent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    credits_gpu_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    credits_gpu_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

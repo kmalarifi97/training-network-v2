@@ -129,6 +129,10 @@ class NodeService:
     async def list_for_user(self, host: User) -> list[Node]:
         return await self.node_repo.list_for_user(host.id)
 
+    async def list_marketplace(self) -> list[tuple[Node, str]]:
+        """Return every (node, owner_email) pair. Caller filters by status."""
+        return await self.node_repo.list_all_with_owner_email()
+
     async def get_owned_node(self, owner: User, node_id: UUID) -> Node:
         node = await self.node_repo.get_by_id(node_id)
         if node is None or node.user_id != owner.id:

@@ -10,6 +10,7 @@ from app.schemas.nodes import (
     HeartbeatRequest,
     HeartbeatResponse,
     NodeDetail,
+    NodeMarketplaceView,
     NodeMetricSample,
     NodePublic,
     RegisterNodeRequest,
@@ -95,6 +96,26 @@ async def list_nodes(user: CurrentUser, session: DbSession) -> list[NodePublic]:
     nodes = await service.list_for_user(user)
     now = datetime.now(UTC)
     return [_public_view(n, compute_node_status(n, now)) for n in nodes]
+
+
+@router.get("/marketplace", response_model=list[NodeMarketplaceView])
+async def list_marketplace(
+    user: CurrentUser, session: DbSession
+) -> list[NodeMarketplaceView]:
+    service = NodeService(session)
+    pairs = await service.list_marketplace()
+    now = datetime.now(UTC)
+    out: list[NodeMarketplaceView] = []
+    for node, email in pairs:
+        status = compute_node_status(node, now)
+        if status != "online":
+            continue
+        handle = "@" + (email.split("@", 1)[0] if "@" in email else email)
+        base = _public_view(node, status)
+        out.append(
+            NodeMarketplaceView(**base.model_dump(), host_handle=handle)
+        )
+    return out
 
 
 @router.get("/{node_id}", response_model=NodeDetail)

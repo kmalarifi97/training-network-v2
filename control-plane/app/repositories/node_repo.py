@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.node import Node
+from app.models.user import User
 
 
 class NodeRepository:
@@ -45,6 +46,14 @@ class NodeRepository:
             .order_by(Node.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def list_all_with_owner_email(self) -> list[tuple[Node, str]]:
+        result = await self.session.execute(
+            select(Node, User.email)
+            .join(User, Node.user_id == User.id)
+            .order_by(Node.created_at.desc())
+        )
+        return [(row[0], row[1]) for row in result.all()]
 
     async def get_by_id(self, node_id: UUID) -> Node | None:
         result = await self.session.execute(select(Node).where(Node.id == node_id))

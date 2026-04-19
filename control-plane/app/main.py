@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.controllers import api_router
@@ -28,6 +29,7 @@ from app.observability import HTTPMetricsMiddleware  # noqa: E402
 
 app.add_middleware(HTTPMetricsMiddleware)
 app.include_router(api_router)
+app.mount("/public", StaticFiles(directory="public"), name="public")
 
 
 @app.exception_handler(EmailAlreadyExists)
