@@ -154,6 +154,18 @@ So the evaluator can see the surface I stayed off:
 
 ---
 
+## Bugs found and fixed during real-host testing
+
+1. **`nvidia-smi` invisible to sudo on WSL2** — agent under systemd died with
+   `GPU detection failed: nvidia-smi not found on PATH`, even though running
+   `nvidia-smi` as the user worked. Cause: CUDA-on-WSL ships `nvidia-smi` at
+   `/usr/lib/wsl/lib/nvidia-smi`, which is on the interactive user's PATH but
+   not on sudo's `secure_path`. Fix in `install.sh`: when running under WSL,
+   symlink `/usr/lib/wsl/lib/nvidia-smi → /usr/local/bin/nvidia-smi` after
+   the toolkit step. Without this, **every WSL host hits the bug** — `init`
+   fails, the systemd service restart-loops, the node never appears in the
+   UI, and the customer has no clue why.
+
 ## Follow-ups surfaced during real-host testing
 
 Track these so they don't get re-discovered by every customer.

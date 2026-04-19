@@ -131,6 +131,16 @@ if [[ $SKIP_NVIDIA -eq 0 ]]; then
     systemctl restart docker
 fi
 
+# --- WSL: ensure nvidia-smi is reachable under sudo's secure_path ---
+# Inside WSL, the CUDA-on-WSL nvidia-smi lives at /usr/lib/wsl/lib/, which is
+# on the user's PATH but NOT on sudo's default secure_path. The agent runs
+# under systemd (effectively root) and would fail with "nvidia-smi not found"
+# until we surface the binary at a standard location.
+if [[ $IS_WSL -eq 1 && -x /usr/lib/wsl/lib/nvidia-smi && ! -e /usr/local/bin/nvidia-smi ]]; then
+    log "Symlinking WSL nvidia-smi → /usr/local/bin/nvidia-smi (so root/systemd can find it)"
+    ln -s /usr/lib/wsl/lib/nvidia-smi /usr/local/bin/nvidia-smi
+fi
+
 # --- GPU sanity ---
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
