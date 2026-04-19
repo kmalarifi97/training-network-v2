@@ -1784,6 +1784,35 @@ function AddGpuFormView({
    Add GPU — Success screen (shows install command)
    ================================================================== */
 
+function copyToClipboard(text: string, onDone: () => void) {
+  // Prefer the async clipboard API (requires HTTPS or localhost).
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(onDone).catch(() => fallbackCopy(text, onDone));
+    return;
+  }
+  fallbackCopy(text, onDone);
+}
+
+function fallbackCopy(text: string, onDone: () => void) {
+  // Fallback for plain-HTTP origins where navigator.clipboard is undefined.
+  if (typeof document === "undefined") return;
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  ta.style.top = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    onDone();
+  } catch {
+    /* give up silently; user can select + Cmd/Ctrl+C manually */
+  }
+  document.body.removeChild(ta);
+}
+
 function AddGpuSuccessView({
   name,
   claim,
@@ -1798,7 +1827,20 @@ function AddGpuSuccessView({
     const m = claim.install_command.match(/--control-plane=(\S+)/);
     return m ? m[1] : "http://34.18.164.66:8000";
   }, [claim.install_command]);
-  const installCmd = `# 1 — Install the agent (once per machine)
+
+  const [os, setOs] = useState<"windows" | "linux" | "mac">("windows");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  function handleCopy(text: string, key: string) {
+    copyToClipboard(text, () => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((c) => (c === key ? null : c)), 2000);
+    });
+  }
+
+  const powershellCmd = `wsl --install -d Ubuntu`;
+
+  const bashCmd = `# 1 — Install the agent (once per machine)
 curl -fsSL ${controlPlane}/public/install.sh | sudo bash
 
 # 2 — Register this machine with your claim token
@@ -1810,13 +1852,6 @@ sudo gpu-agent init \\
 
 # 3 — Start the service (survives reboots)
 sudo systemctl enable --now gpu-agent`;
-  const [copied, setCopied] = useState(false);
-
-  function copy() {
-    navigator.clipboard?.writeText(installCmd);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   return (
     <div className="max-w-3xl">
@@ -1826,91 +1861,219 @@ sudo systemctl enable --now gpu-agent`;
           تم إنشاء رمز التسجيل
         </div>
         <h1 className="text-2xl font-bold tracking-tight mb-2">
-          خطوة واحدة أخيرة: شغّل الأمر على «{name}»
+          خطوة واحدة أخيرة: شغّل الأوامر على «{name}»
         </h1>
         <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
-          انسخ الأمر أدناه وشغّله في terminal الجهاز الذي تريد إضافته. فور انتهاء التسجيل،
-          سيظهر الجهاز في قائمتك وسيكون متاحاً للاستئجار.
+          اختر نظام التشغيل الذي يعمل عليه الجهاز الذي تريد إضافته.
         </p>
       </div>
 
-      {/* The install command — the money shot for this screen */}
-      <div className="rounded-xl border border-zinc-800 bg-black/50 overflow-hidden mb-5">
-        <div className="px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
-          <div className="text-xs text-zinc-400 font-medium">أمر التسجيل</div>
+      {/* OS tabs */}
+      <div className="mb-5 inline-flex rounded-lg border border-zinc-800 bg-zinc-900/40 p-1 gap-1">
+        {([
+          ["windows", "Windows"],
+          ["linux", "Linux"],
+          ["mac", "Mac"],
+        ] as const).map(([key, label]) => (
           <button
-            onClick={copy}
-            className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
-              copied
-                ? "bg-emerald-500/20 text-emerald-300"
-                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            key={key}
+            onClick={() => setOs(key)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              os === key
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                : "text-zinc-400 hover:text-zinc-200 border border-transparent"
             }`}
           >
-            {copied ? "تم النسخ ✓" : "📋 نسخ"}
+            {label}
           </button>
-        </div>
-        <pre
-          dir="ltr"
-          className="p-4 text-xs text-emerald-300 font-mono overflow-x-auto text-start leading-relaxed"
-        >
-          {installCmd}
-        </pre>
+        ))}
       </div>
 
-      {/* Token separately, with a warning */}
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-5">
-        <div className="flex items-start gap-3">
-          <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs flex-shrink-0 font-bold">
-            !
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-amber-200 mb-1">
-              هذا الرمز يُعرض مرّة واحدة فقط
+      {os === "mac" && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 mb-5">
+          <div className="flex items-start gap-4">
+            <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg flex-shrink-0">
+              ⚠
             </div>
-            <div className="text-xs text-amber-400/80 leading-relaxed mb-3">
-              احفظه الآن. لن نتمكّن من إظهاره لك مرة أخرى. صلاحيته 24 ساعة ويُستخدم مرّة واحدة.
+            <div className="flex-1">
+              <div className="text-base font-semibold text-amber-100 mb-2">
+                أجهزة ماك لا يمكنها استضافة GPU
+              </div>
+              <div className="text-sm text-amber-200/90 leading-relaxed mb-3">
+                أجهزة ماك الحديثة تستخدم كروت شاشة من Apple (معالج M1/M2/M3) ولا تحتوي
+                على كرت NVIDIA. منصّتنا تشغّل الحاويات باستخدام{" "}
+                <span className="font-mono" dir="ltr">docker run --gpus all</span> وهذا
+                يتطلّب كرت NVIDIA تحديداً.
+              </div>
+              <div className="text-sm text-amber-200/90 leading-relaxed">
+                يمكنك بدلاً من ذلك <span className="font-semibold text-emerald-300">استئجار GPU</span>{" "}
+                من الأعضاء الآخرين في الشبكة عبر التبويب الأيمن «استئجار GPU».
+              </div>
             </div>
-            <code
-              dir="ltr"
-              className="block rounded-md bg-black/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 font-mono text-start break-all"
-            >
-              {claimTokenStr}
-            </code>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Requirements */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 mb-8">
-        <div className="text-sm font-semibold text-zinc-200 mb-3">متطلبات الجهاز</div>
-        <ul className="space-y-2 text-xs text-zinc-400">
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-400 mt-0.5">✓</span>
-            <span>كرت شاشة NVIDIA مع تعريفات مُحدَّثة (CUDA 12 أو أحدث).</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-400 mt-0.5">✓</span>
-            <span>
-              Docker مثبَّت، مع إضافة <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>.
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-400 mt-0.5">✓</span>
-            <span>اتصال إنترنت خارج فقط (لا يتطلّب فتح بورت — الجهاز يتصل بالشبكة).</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-400 mt-0.5">✓</span>
-            <span>نظام Linux أو macOS (Windows عبر WSL2).</span>
-          </li>
-        </ul>
-      </div>
+      {os === "windows" && (
+        <>
+          {/* Step 0: WSL install via PowerShell */}
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-500/20 text-sky-300 text-[10px] font-bold">0</span>
+            <h3 className="text-sm font-semibold text-zinc-200">
+              تثبيت WSL (مرة واحدة فقط)
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+            افتح <span className="font-mono text-zinc-300" dir="ltr">PowerShell</span>{" "}
+            كمسؤول (Run as administrator)، ثم انسخ الأمر التالي. سيقوم Windows
+            بتحميل Ubuntu وطلب إعادة التشغيل.
+          </p>
+          <CodeBlock
+            language="powershell"
+            code={powershellCmd}
+            copied={copiedKey === "ps"}
+            onCopy={() => handleCopy(powershellCmd, "ps")}
+          />
+          <p className="text-xs text-zinc-500 mt-3 mb-6 leading-relaxed">
+            بعد إعادة التشغيل، ستفتح نافذة Ubuntu تلقائياً وستطلب منك اختيار اسم
+            مستخدم وكلمة مرور (للينكس داخل WSL، منفصلة عن حساب Windows). بعدها،
+            انتقل للخطوة التالية <span className="font-bold text-zinc-300">داخل نافذة Ubuntu</span> وليس PowerShell.
+          </p>
+
+          {/* Steps 1-3: bash inside WSL Ubuntu */}
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">1-3</span>
+            <h3 className="text-sm font-semibold text-zinc-200">
+              تثبيت الوكيل داخل Ubuntu
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+            انسخ والصق الكتلة كاملة داخل نافذة Ubuntu terminal.
+          </p>
+          <CodeBlock
+            language="bash"
+            code={bashCmd}
+            copied={copiedKey === "bash"}
+            onCopy={() => handleCopy(bashCmd, "bash")}
+          />
+        </>
+      )}
+
+      {os === "linux" && (
+        <>
+          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+            افتح terminal على جهاز Linux الذي يحتوي على كرت NVIDIA والصق الكتلة التالية.
+            تأكّد أنّ <span className="font-mono" dir="ltr">docker</span> و{" "}
+            <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>{" "}
+            مثبَّتان، و <span className="font-mono" dir="ltr">nvidia-smi</span> يعمل.
+          </p>
+          <CodeBlock
+            language="bash"
+            code={bashCmd}
+            copied={copiedKey === "bash"}
+            onCopy={() => handleCopy(bashCmd, "bash")}
+          />
+        </>
+      )}
+
+      {/* Token warning (shown for windows + linux, hidden on mac) */}
+      {os !== "mac" && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-5 mt-6">
+          <div className="flex items-start gap-3">
+            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs flex-shrink-0 font-bold">
+              !
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-amber-200 mb-1">
+                هذا الرمز يُعرض مرّة واحدة فقط
+              </div>
+              <div className="text-xs text-amber-400/80 leading-relaxed mb-3">
+                احفظه الآن. لن نتمكّن من إظهاره لك مرة أخرى. صلاحيته 24 ساعة ويُستخدم مرّة واحدة.
+              </div>
+              <code
+                dir="ltr"
+                className="block rounded-md bg-black/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 font-mono text-start break-all"
+              >
+                {claimTokenStr}
+              </code>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Requirements — hidden on mac because they don't apply */}
+      {os !== "mac" && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 mb-8">
+          <div className="text-sm font-semibold text-zinc-200 mb-3">متطلبات الجهاز</div>
+          <ul className="space-y-2 text-xs text-zinc-400">
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span>كرت شاشة NVIDIA مع تعريفات مُحدَّثة (CUDA 12 أو أحدث).</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span>
+                Docker مثبَّت، مع إضافة <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span>اتصال إنترنت خارج فقط (لا يتطلّب فتح بورت — الجهاز يتصل بالشبكة).</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span>نظام Linux (أصلي) أو Windows مع WSL2.</span>
+            </li>
+          </ul>
+        </div>
+      )}
 
       <button
         onClick={onDone}
         className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition-colors"
       >
-        حسناً، سيظهر «{name}» في قائمتي بعد التشغيل
+        {os === "mac"
+          ? "العودة إلى قائمة أجهزتي"
+          : `حسناً، سيظهر «${name}» في قائمتي بعد التشغيل`}
       </button>
+    </div>
+  );
+}
+
+function CodeBlock({
+  language,
+  code,
+  copied,
+  onCopy,
+}: {
+  language: string;
+  code: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-black/50 overflow-hidden mb-2">
+      <div className="px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
+        <div className="text-xs text-zinc-500 font-mono" dir="ltr">
+          {language}
+        </div>
+        <button
+          onClick={onCopy}
+          className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
+            copied
+              ? "bg-emerald-500/20 text-emerald-300"
+              : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          }`}
+        >
+          {copied ? "تم النسخ ✓" : "📋 نسخ"}
+        </button>
+      </div>
+      <pre
+        dir="ltr"
+        className="p-4 text-xs text-emerald-300 font-mono overflow-x-auto text-start leading-relaxed whitespace-pre"
+      >
+        {code}
+      </pre>
     </div>
   );
 }
