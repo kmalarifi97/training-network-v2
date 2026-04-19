@@ -19,8 +19,8 @@ import {
   type UserResponse,
 } from "@/lib/api";
 
-const DEFAULT_IMAGE = "kmalarifi/llm-finetune:v1";
-const DEFAULT_REPO = "https://github.com/kmalarifi/finetune-demo";
+const DEFAULT_IMAGE = "nvidia/cuda:12.2.0-base-ubuntu22.04";
+const DEFAULT_COMMAND = "nvidia-smi";
 
 function handleFromEmail(email: string): string {
   const prefix = email.includes("@") ? email.split("@", 1)[0] : email;
@@ -94,7 +94,7 @@ export default function Home() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [selectedRentable, setSelectedRentable] = useState<NodeMarketplace | null>(null);
   const [image, setImage] = useState(DEFAULT_IMAGE);
-  const [repo, setRepo] = useState(DEFAULT_REPO);
+  const [command, setCommand] = useState(DEFAULT_COMMAND);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [newGpuName, setNewGpuName] = useState("");
   const [claimToken, setClaimToken] = useState<ClaimTokenResponse | null>(null);
@@ -171,8 +171,8 @@ export default function Home() {
                 gpu={selectedRentable}
                 image={image}
                 setImage={setImage}
-                repo={repo}
-                setRepo={setRepo}
+                command={command}
+                setCommand={setCommand}
                 onBack={() => setPhase("rent_browse")}
                 onStart={(id) => {
                   setActiveJobId(id);
@@ -829,41 +829,37 @@ function RentSubmitView({
   gpu,
   image,
   setImage,
-  repo,
-  setRepo,
+  command,
+  setCommand,
   onBack,
   onStart,
 }: {
   gpu: NodeMarketplace;
   image: string;
   setImage: (v: string) => void;
-  repo: string;
-  setRepo: (v: string) => void;
+  command: string;
+  setCommand: (v: string) => void;
   onBack: () => void;
   onStart: (jobId: string) => void;
 }) {
-  const [epochs, setEpochs] = useState(3);
   const [minutes, setMinutes] = useState(10);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const shellCmd = useMemo(
-    () =>
-      `git clone --depth 1 ${repo} repo && cd repo && python3 train.py --epochs ${epochs}`,
-    [repo, epochs],
-  );
-  const cmdPreview = `bash -c "${shellCmd}"`;
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!command.trim()) {
+      setError("الرجاء كتابة الأمر الذي سيُشغَّل داخل الحاوية.");
+      return;
+    }
     setBusy(true);
     try {
       const job = await apiFetch<JobPublic>("/api/jobs", {
         method: "POST",
         body: JSON.stringify({
           docker_image: image,
-          command: ["bash", "-c", shellCmd],
+          command: ["bash", "-c", command],
           gpu_count: 1,
           max_duration_seconds: minutes * 60,
           preferred_node_id: gpu.id,
@@ -893,7 +889,7 @@ function RentSubmitView({
       </button>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-2">تشغيل مهمة تدريب</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-2">تشغيل حاوية على GPU</h1>
         <div className="flex items-center gap-3 text-sm text-zinc-400 flex-wrap">
           <span>على GPU:</span>
           <span className="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-emerald-300">
@@ -915,7 +911,7 @@ function RentSubmitView({
       >
         <Field
           label="صورة Docker"
-          hint="صورة عامة من Docker Hub — البيئة (PyTorch, CUDA)، وليست الكود."
+          hint="صورة عامة من Docker Hub. للاختبار السريع: nvidia/cuda:12.2.0-base-ubuntu22.04"
         >
           <input
             value={image}
@@ -927,55 +923,45 @@ function RentSubmitView({
         </Field>
 
         <Field
-          label="رابط مستودع GitHub"
-          hint="يُستنسخ في بداية كل مهمة. يجب أن يحتوي على train.py و data/train.csv."
+          label="الأمر"
+          hint='سيُلفّ تلقائياً بـ bash -c "..." فيمكنك استخدام &&, ||, pipes, وعدة أسطر.'
         >
-          <input
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
+          <textarea
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
             required
+            rows={4}
             dir="ltr"
-            className="font-mono text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 text-start"
+            placeholder="nvidia-smi"
+            className="font-mono text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 text-start whitespace-pre"
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-5">
-          <Field label="عدد الحقبات (Epochs)" hint="كم مرّة يمرّ النموذج على بيانات التدريب.">
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={epochs}
-              onChange={(e) => setEpochs(Number(e.target.value))}
-              required
-              className="text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
-            />
-          </Field>
-          <Field label="الحد الأقصى (بالدقائق)" hint="سيتم إيقاف المهمة إذا تجاوزت هذه المدة.">
-            <input
-              type="number"
-              min={1}
-              max={1440}
-              value={minutes}
-              onChange={(e) => setMinutes(Number(e.target.value))}
-              required
-              className="text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
-            />
-          </Field>
-        </div>
+        <Field label="الحد الأقصى (بالدقائق)" hint="سيتم إيقاف المهمة إذا تجاوزت هذه المدة.">
+          <input
+            type="number"
+            min={1}
+            max={1440}
+            value={minutes}
+            onChange={(e) => setMinutes(Number(e.target.value))}
+            required
+            className="text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+          />
+        </Field>
 
         <div>
           <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1.5">
-            الأمر الذي سينفَّذ داخل الحاوية
+            الأمر الذي سينفَّذ فعلياً داخل الحاوية
           </div>
           <pre
             dir="ltr"
-            className="rounded-lg border border-zinc-800 bg-black/40 p-3.5 text-[11px] text-zinc-400 font-mono overflow-x-auto whitespace-pre-wrap break-all text-start"
+            className="rounded-lg border border-zinc-800 bg-black/40 p-3.5 text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre-wrap break-all text-start"
           >
-            {cmdPreview}
+{`docker run --rm --gpus all ${image} bash -c ${JSON.stringify(command || "")}`}
           </pre>
           <p className="mt-2 text-[11px] text-zinc-600">
-            ستتلقّى لقطة مباشرة لكل خطوة: سحب الصورة، بدء الحاوية، تدريب النموذج، حفظ الخرج.
+            أي مخرجات تريد حفظها يجب أن ترسلها من داخل الحاوية إلى تخزين خارجي (S3,
+            GitHub, webhook). لا نحتفظ بأي ملفات بعد خروج الحاوية (ADR-003).
           </p>
         </div>
 
