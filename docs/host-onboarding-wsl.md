@@ -32,57 +32,50 @@ After reboot, an Ubuntu terminal window opens automatically. It asks you to pick
 
 ---
 
-## Step 2 — Install Docker + NVIDIA toolkit inside Ubuntu (one-time, ~5 minutes)
+## Step 2 — Enable systemd inside WSL (one-time, ~30 seconds)
 
-Inside that Ubuntu terminal, paste this block:
-
-```bash
-# Docker Engine
-sudo apt update
-sudo apt install -y ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io
-
-# NVIDIA Container Toolkit (so Docker can see your GPU)
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt update
-sudo apt install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo service docker restart
-```
-
-Check it worked:
+WSL2 needs systemd turned on for the agent service to run. Paste inside Ubuntu:
 
 ```bash
-nvidia-smi
+sudo tee /etc/wsl.conf >/dev/null <<'CONF'
+[boot]
+systemd=true
+CONF
 ```
 
-You should see your GPU model and memory listed. If you get "command not found" your NVIDIA driver on the Windows side is outdated — update it from `nvidia.com/drivers` and try again.
+Then, in **PowerShell on Windows**, shut WSL down so it picks up the change:
 
-```bash
-sudo docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+```powershell
+wsl --shutdown
 ```
 
-This confirms Docker can also see your GPU. If it works, you see the same table as the last command.
+Reopen Ubuntu from the Start menu.
 
 ---
 
-## Step 3 — Install the gpu-agent (30 seconds)
+## Step 3 — Run the installer (one command, ~3 minutes)
 
-Still in the Ubuntu terminal:
+Inside Ubuntu:
 
 ```bash
 curl -fsSL http://34.18.164.66:8000/public/install.sh | sudo bash
 ```
 
-This downloads the agent binary, installs it to `/usr/local/bin/gpu-agent`, and writes a systemd service.
+The installer does everything in one shot:
+
+- Installs Docker Engine
+- Installs the NVIDIA Container Toolkit and wires it into Docker
+- Downloads the gpu-agent binary to `/usr/local/bin/gpu-agent`
+- Writes a systemd unit at `/etc/systemd/system/gpu-agent.service`
+
+Check your GPU is visible after it finishes:
+
+```bash
+nvidia-smi
+sudo docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+```
+
+You should see your GPU listed both times. If `nvidia-smi` says "command not found," your NVIDIA driver on the Windows side is outdated — update it from `nvidia.com/drivers` and re-run `curl ... | sudo bash`.
 
 ---
 
@@ -142,7 +135,7 @@ You should see heartbeat messages every 10 seconds. Press `Ctrl+C` to stop taili
 
 **`nvidia-smi: command not found`** — Your NVIDIA driver on Windows is too old. Update to any driver from 2023 or later at `nvidia.com/drivers`. You do not install an NVIDIA driver *inside* WSL — the Windows driver exposes the GPU through to WSL automatically.
 
-**`docker: Cannot connect to the Docker daemon`** — Run `sudo service docker start`. WSL2 doesn't auto-start Docker like a native Linux install; add `sudo service docker start` to your `~/.bashrc` if it keeps happening.
+**`docker: Cannot connect to the Docker daemon`** — Run `sudo systemctl start docker`. If systemd isn't running inside WSL, re-check Step 2.
 
 **`docker: Error response from daemon: could not select device driver "" with capabilities: [[gpu]]`** — The nvidia-container-toolkit didn't register with Docker. Re-run:
 ```bash
