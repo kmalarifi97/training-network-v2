@@ -154,6 +154,38 @@ So the evaluator can see the surface I stayed off:
 
 ---
 
+## Follow-ups surfaced during real-host testing
+
+Track these so they don't get re-discovered by every customer.
+
+1. **`wsl --install -d Ubuntu` is not always one-shot on clean Windows.**
+   On at least some Windows 11 hosts a single Admin-PowerShell run of
+   `wsl --install -d Ubuntu` enables the WSL platform + reboots, but
+   leaves the distro list empty after the reboot. `wsl -l -v` then says
+   "Windows Subsystem for Linux has no installed distributions." The
+   recovery is a second `wsl --install Ubuntu` (no -d, no admin needed)
+   which downloads the rootfs and launches the first-run user wizard.
+
+   This isn't our installer's bug, it's a Microsoft-side rough edge —
+   but it's the single biggest friction point in the onboarding chain
+   so far. Worth either:
+   - Documenting prominently in `docs/host-onboarding-wsl.md` (a "if
+     after reboot you don't see Ubuntu, run this" callout), and/or
+   - Shipping a `setup-wsl.ps1` companion that polls until the distro
+     appears and re-issues the install if not, so the customer only
+     pastes one command.
+
+2. **Customer flow still requires two distinct shells** (PowerShell for
+   WSL install, then Ubuntu for the agent install). Confused at least
+   one tester ("where do I paste these?"). The PowerShell companion
+   script in (1) would also let us inline a one-line "now open Ubuntu
+   and paste this" prompt at the end.
+
+3. **Live `/public/install.sh` lags `mvp` until `deploy.sh` runs.**
+   The push-then-test loop wants either an auto-deploy on push, or a
+   way to test the new script without rolling it to live (curl from
+   GitHub raw works as a stopgap; documented in the test command).
+
 ## Files touched
 
 ```

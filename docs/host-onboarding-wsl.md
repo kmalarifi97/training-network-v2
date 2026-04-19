@@ -28,6 +28,8 @@ Windows will download Ubuntu and ask to **reboot**. Save your games, then reboot
 
 After reboot, an Ubuntu terminal window opens automatically. It asks you to pick a Linux username and password — pick anything you'll remember.
 
+> **If after the reboot no Ubuntu window opens** and `wsl -l -v` in PowerShell says *"has no installed distributions,"* the distro download didn't finish. Run **`wsl --install Ubuntu`** in PowerShell (admin not needed this time) — Windows downloads Ubuntu and launches the first-run wizard. This is a Microsoft quirk on some clean installs.
+
 > **Heads up:** that Linux username/password is separate from your Windows login. You only need it inside the Ubuntu terminal.
 
 ---
