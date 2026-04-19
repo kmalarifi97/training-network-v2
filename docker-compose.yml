@@ -6,6 +6,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://gpu:gpu@db:5432/gpu_network
       JWT_SECRET: dev-secret-change-in-prod
+      CONTROL_PLANE_PUBLIC_URL: ${CONTROL_PLANE_PUBLIC_URL:-http://34.18.164.66:8000}
     depends_on:
       db:
         condition: service_healthy
@@ -31,12 +32,8 @@ services:
       timeout: 5s
       retries: 10
 
-  admin-ui:
-    build: ./admin-ui
-    ports:
-      - "3000:3000"
-    depends_on:
-      - control-plane
+  # admin-ui retired per ADR-005 — admin ops go through Swagger at /docs.
+  # Source remains under admin-ui/ for reference but is not built or deployed.
 
   client-ui:
     build: ./client-ui

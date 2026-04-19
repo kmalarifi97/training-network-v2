@@ -32,7 +32,7 @@ Habits that protect quality. Less rigid than invariants — deviations should be
 
 10. **New HTTP endpoints ship with integration tests.** Minimum bar: happy path + auth-rejection for each credential type that shouldn't reach it.
 
-11. **`client-ui/` is a pitch mock (no `fetch` calls).** `admin-ui/` is the real UI backed by the live API. Do not wire the mock to the real API without a deliberate decision — the mock's data shape may not match the server's, and the mock is optimized for a demo script, not for production correctness.
+11. **`client-ui/` is the single deployed UI**, backed by the live API. `admin-ui/` remains in the repo but is not built or deployed (see ADR-005). Admin operations during friends-beta go through Swagger at `/docs`. If admin operations later need a richer UI, add role-gated routes inside `client-ui` (check `user.is_admin` from `/api/me`) — do not resurrect a separate admin app.
 
 12. **Story-contract diagrams stay business-level.** Flowcharts and sequence diagrams show user clicks and outcomes — never POSTs, DB operations, or service names. Those belong in code, not in a diagram for stakeholders.
 
@@ -44,3 +44,4 @@ Material decisions that might evolve are captured as ADRs in `docs/decisions/`:
 - `002-workload-agnostic.md` — thin network layer, not an AI platform
 - `003-no-platform-storage-v1.md` — pattern 1 (customer-owned exfiltration) + UI alert
 - `004-pricing.md` — platform-set per GPU-hour for v1
+- `005-unified-client-ui.md` — client-ui is the only deployed UI; admin-ui retired, admin ops via Swagger
