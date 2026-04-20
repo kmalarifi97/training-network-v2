@@ -16,9 +16,19 @@ dependencies = [
     "rich>=13.7",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-httpx>=0.30",
+]
+
 [project.scripts]
 gpunet = "gpunet_cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gpunet_cli"]
 include = ["skills/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
