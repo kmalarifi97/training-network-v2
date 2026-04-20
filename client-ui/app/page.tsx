@@ -41,11 +41,13 @@ type Phase =
   | "rent_done"
   | "my_gpus"
   | "add_gpu_form"
-  | "add_gpu_success";
+  | "add_gpu_success"
+  | "cli_install";
 
 /* Which sidebar section each phase belongs to. */
-function sidebarSection(p: Phase): "rent" | "host" | null {
+function sidebarSection(p: Phase): "rent" | "host" | "cli" | null {
   if (p === "login" || p === "loading" || p === "pending_approval") return null;
+  if (p === "cli_install") return "cli";
   if (p.startsWith("rent_")) return "rent";
   return "host";
 }
@@ -234,6 +236,7 @@ export default function Home() {
                 }}
               />
             )}
+            {phase === "cli_install" && <CliInstallView />}
           </main>
         </div>
       )}
@@ -287,7 +290,9 @@ function Header({
       ? "استئجار GPU"
       : sec === "host"
         ? "إضافة GPU للتأجير"
-        : "";
+        : sec === "cli"
+          ? "سطر الأوامر"
+          : "";
 
   return (
     <header className="relative border-b border-zinc-900 bg-[#050507]/90 backdrop-blur-sm sticky top-0 z-10">
@@ -362,6 +367,13 @@ function Sidebar({
       hint: "شغّل مهامك على جهاز شخص آخر",
       icon: "⚡",
       target: "rent_browse" as Phase,
+    },
+    {
+      section: "cli" as const,
+      label: "سطر الأوامر",
+      hint: "استخدم GPU Network من الترمنال",
+      icon: ">_",
+      target: "cli_install" as Phase,
     },
   ];
 
@@ -2060,6 +2072,187 @@ function CodeBlock({
       >
         {code}
       </pre>
+    </div>
+  );
+}
+
+/* ==================================================================
+   CLI install view
+   ================================================================== */
+
+function CliInstallView() {
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const controlPlane =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//${window.location.hostname}:8000`
+      : "http://localhost:8000";
+
+  const pipCmd =
+    "pip install git+https://github.com/kmalarifi97/training-network-v2.git#subdirectory=cli";
+  const keyForCmd = generatedKey ?? "<YOUR_KEY>";
+  const authCmd = `gpunet auth set-key ${keyForCmd} --url ${controlPlane}`;
+  const verifyCmd = "gpunet auth whoami";
+  const skillCmd = "gpunet install skill";
+
+  function handleCopy(text: string, key: string) {
+    copyToClipboard(text, () => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((c) => (c === key ? null : c)), 2000);
+    });
+  }
+
+  async function generateKey() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ full_key: string; prefix: string }>(
+        "/api/keys",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `cli-${new Date().toISOString().slice(0, 10)}`,
+          }),
+        },
+      );
+      setGeneratedKey(res.full_key);
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.detail ?? "فشل إنشاء المفتاح");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold tracking-tight mb-2">سطر الأوامر</h1>
+        <p className="text-sm text-zinc-400 leading-relaxed">
+          استخدم{" "}
+          <span className="font-mono text-emerald-300" dir="ltr">
+            gpunet
+          </span>{" "}
+          من الترمنال لإرسال مهام GPU، تصفّح الشبكة، وإدارة حسابك — بدون الحاجة لفتح
+          المتصفّح.
+        </p>
+      </div>
+
+      {/* Step 1: pip install */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+          1
+        </span>
+        <h3 className="text-sm font-semibold text-zinc-200">
+          ثبّت الأداة (يتطلّب Python 3.10+)
+        </h3>
+      </div>
+      <CodeBlock
+        language="bash"
+        code={pipCmd}
+        copied={copiedKey === "pip"}
+        onCopy={() => handleCopy(pipCmd, "pip")}
+      />
+
+      {/* Step 2: generate API key */}
+      <div className="mt-6 mb-3 flex items-center gap-2">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+          2
+        </span>
+        <h3 className="text-sm font-semibold text-zinc-200">أنشئ مفتاح API</h3>
+      </div>
+      <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+        سيُعرض المفتاح الكامل مرّة واحدة فقط. انسخه فوراً إلى مكان آمن.
+      </p>
+
+      {!generatedKey ? (
+        <button
+          onClick={generateKey}
+          disabled={busy}
+          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {busy ? "جاري الإنشاء..." : "إنشاء مفتاح جديد"}
+        </button>
+      ) : (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-2">
+          <div className="flex items-start gap-3">
+            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs flex-shrink-0 font-bold">
+              !
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-amber-200 mb-1">
+                هذا المفتاح يُعرض مرّة واحدة فقط
+              </div>
+              <div className="text-xs text-amber-400/80 leading-relaxed mb-3">
+                احفظه الآن. لن نتمكّن من إظهاره لك مرة أخرى.
+              </div>
+              <code
+                dir="ltr"
+                className="block rounded-md bg-black/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 font-mono text-start break-all"
+              >
+                {generatedKey}
+              </code>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
+      {/* Step 3: auth set-key */}
+      <div className="mt-6 mb-3 flex items-center gap-2">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+          3
+        </span>
+        <h3 className="text-sm font-semibold text-zinc-200">اربط الأداة بحسابك</h3>
+      </div>
+      <CodeBlock
+        language="bash"
+        code={authCmd}
+        copied={copiedKey === "auth"}
+        onCopy={() => handleCopy(authCmd, "auth")}
+      />
+
+      {/* Step 4: verify */}
+      <div className="mt-6 mb-3 flex items-center gap-2">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+          4
+        </span>
+        <h3 className="text-sm font-semibold text-zinc-200">تحقّق من الاتصال</h3>
+      </div>
+      <CodeBlock
+        language="bash"
+        code={verifyCmd}
+        copied={copiedKey === "verify"}
+        onCopy={() => handleCopy(verifyCmd, "verify")}
+      />
+
+      {/* Optional: skill install */}
+      <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+        <div className="text-sm font-semibold text-zinc-200 mb-2">
+          للوكلاء البرمجيين (اختياري)
+        </div>
+        <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+          إذا كنت تستخدم{" "}
+          <span className="font-mono text-zinc-300" dir="ltr">
+            Claude Code
+          </span>{" "}
+          أو وكيلاً مشابهاً، ثبّت المهارة ليكتشف المنصّة تلقائياً:
+        </p>
+        <CodeBlock
+          language="bash"
+          code={skillCmd}
+          copied={copiedKey === "skill"}
+          onCopy={() => handleCopy(skillCmd, "skill")}
+        />
+      </div>
     </div>
   );
 }
