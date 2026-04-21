@@ -23,6 +23,13 @@
 
   --danger: #b23b2b;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Dark-island token — near-black with a faint green cast (full-bleed bands) */
+  --ink: #0b1a10;
+
+  /* Categorical chip hues (available, wire when needed) */
+  --cat-indigo: #4338a0;
+  --cat-amber: #b57524;
 }
 
 @theme inline {
@@ -47,8 +54,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  font-weight: 500;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+.display-tight {
+  letter-spacing: -0.02em;
 }
 
 /* Light radiates outward from the terminal (left side of hero in RTL). */
@@ -91,6 +103,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
+  box-shadow: 0 40px 80px -24px rgba(0, 108, 53, 0.07);
 }
 
 .card-hi {
@@ -104,10 +117,11 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 9999px;
+  padding: 0.7rem 1.2rem;
+  border-radius: 18px;
   background: var(--accent);
   color: var(--accent-ink);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   font-weight: 600;
   font-size: 0.95rem;
   line-height: 1;
@@ -123,8 +137,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 9999px;
+  padding: 0.7rem 1.2rem;
+  border-radius: 18px;
   background: transparent;
   color: var(--foreground);
   border: 1px solid var(--border-hi);
@@ -176,6 +190,58 @@ body {
 @keyframes pulse {
   0% { transform: scale(0.6); opacity: 0.5; }
   100% { transform: scale(2); opacity: 0; }
+}
+
+/* Dark island — full-bleed band that inverts the theme inside it.
+   Use on CTA / testimonial bands to pace the page with dark↔beige beats. */
+.ink-section {
+  --background: #0b1a10;
+  --surface: #10211a;
+  --surface-hi: #173528;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-hi: rgba(255, 255, 255, 0.18);
+  --foreground: #f4f1dd;
+  --muted: #7e8a80;
+  --muted-hi: #c5c7b5;
+  --accent: #4ec57e;
+  --accent-hi: #6de09c;
+  --accent-ink: #0b1a10;
+  --accent-dim: rgba(78, 197, 126, 0.14);
+  background: var(--background);
+  color: var(--foreground);
+}
+.ink-section .dot-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+.ink-section .card {
+  box-shadow: 0 40px 80px -24px rgba(78, 197, 126, 0.14);
+}
+.ink-section .btn-primary {
+  border-color: rgba(11, 26, 16, 0.25);
+}
+
+/* Horizontal marquee — the page's single kinetic element (logo/tech ticker). */
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+          mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+.marquee-track {
+  display: inline-flex;
+  gap: 3rem;
+  padding-inline: 1.5rem;
+  direction: ltr;
+  animation: marquee 45s linear infinite;
+  white-space: nowrap;
+  will-change: transform;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
 
 /* Terminal — a dark "screen" island inside the light page.

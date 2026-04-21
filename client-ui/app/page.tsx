@@ -11,11 +11,8 @@ export default function Landing() {
       <SiteHeader />
       <main>
         <Hero />
-        <TrustStrip />
-        <WhyLocal />
         <HowItWorks />
         <DualAudience />
-        <CtaBand />
       </main>
       <SiteFooter />
     </>
@@ -29,7 +26,7 @@ export default function Landing() {
 function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-[rgba(237,232,208,0.78)] border-b border-border">
-      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-8">
+      <div className="mx-auto max-w-6xl px-6 lg:px-10 h-16 flex items-center justify-between gap-8">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
           <Logo />
           <span className="font-semibold text-[0.95rem] tracking-tight">
@@ -38,9 +35,6 @@ function SiteHeader() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-hi">
-          <a href="#why" className="hover:text-foreground transition-colors">
-            لماذا محلّيّة؟
-          </a>
           <a href="#how" className="hover:text-foreground transition-colors">
             كيف تعمل؟
           </a>
@@ -131,32 +125,43 @@ function ArrowIcon() {
 function Hero() {
   return (
     <section className="hero-grid relative overflow-hidden">
-      <div className="mx-auto max-w-7xl px-6 pt-20 pb-24 lg:pt-28 lg:pb-32 grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+      <div className="mx-auto max-w-6xl px-6 lg:px-10 pt-14 pb-16 lg:pt-20 lg:pb-20 grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
         <div className="lg:col-span-6 flex flex-col gap-6">
           <span className="pill w-fit">
             <span className="pulse-dot" />
             الإصدار التجريبي · مفتوح للأصدقاء
           </span>
 
-          <h1 className="text-[2.6rem] sm:text-5xl lg:text-[3.75rem] leading-[1.1] font-bold tracking-tight">
-            شبكة <span className="mono">GPU</span> موزّعة،
+          <h1 className="display-tight text-[2.3rem] sm:text-[2.7rem] lg:text-[3.15rem] leading-[1.1] font-bold">
+            شبكة معالجات موزعة،
             <br />
-            <span className="text-accent">مبنيّة محلّيًّا.</span>
+            <span className="text-accent">مبنية محليا.</span>
           </h1>
 
-          <p className="text-lg text-muted-hi leading-[1.75] max-w-[56ch]">
-            اختر عقدة، أرسل صورة <span className="mono">Docker</span>، راقب التدريب مباشرة.
-            بدون مركز بيانات، بدون فواتير دولار، بدون زمن استجابة عابر للقارات.
-          </p>
+          <div className="flex flex-col gap-3 text-lg text-muted-hi leading-[1.6] max-w-[56ch]">
+            <p className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: "var(--accent)" }}
+              />
+              <span>عالج بياناتك في بيئة تتوافق مع الأنظمة.</span>
+            </p>
+            <p className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: "var(--accent)" }}
+              />
+              <span>اربح من معالجك وقت الفراغ.</span>
+            </p>
+          </div>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Link href="/app" className="btn-primary">
               ابدأ الآن
               <ArrowIcon />
             </Link>
-            <a href="#audience" className="btn-secondary">
-              استضف عقدة
-            </a>
           </div>
 
           <div className="flex items-center gap-6 pt-6 text-xs text-muted">
@@ -247,96 +252,6 @@ function TerminalMock() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Trust strip                                                        */
-/* ------------------------------------------------------------------ */
-
-function TrustStrip() {
-  const items = [
-    { k: "Docker", label: "حاويات Docker أصيلة" },
-    { k: "CUDA", label: "عزل CUDA كامل" },
-    { k: "REST", label: "واجهة REST + CLI" },
-    { k: "RTL", label: "واجهة عربيّة" },
-    { k: "OSS", label: "مفتوحة المصدر" },
-  ];
-  return (
-    <section className="border-y border-border bg-[rgba(20,24,20,0.025)]">
-      <div className="mx-auto max-w-7xl px-6 py-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-muted">
-        {items.map((x) => (
-          <span key={x.k} className="flex items-center gap-2">
-            <span className="mono text-muted-hi text-xs">{x.k}</span>
-            <span className="text-muted">·</span>
-            <span>{x.label}</span>
-          </span>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Why local                                                          */
-/* ------------------------------------------------------------------ */
-
-function WhyLocal() {
-  const cards = [
-    {
-      title: "زمن استجابة محلّي",
-      body:
-        "أجهزة داخل المملكة. بدون القفز عبر قارّتين ذهابًا وإيابًا لكل نداء API.",
-      metric: "> 10×",
-      metricLabel: "تحسّن زمن الاستجابة",
-    },
-    {
-      title: "تسعير شفّاف بالريال",
-      body:
-        "أسعار ثابتة لكل ساعة GPU، مقوّمة محلّيًّا. بدون تقلّبات سعر الصرف أو تعقيد الضرائب الأجنبيّة.",
-      metric: "SAR",
-      metricLabel: "تسعير بالريال",
-    },
-    {
-      title: "أجهزة مجتمعيّة",
-      body:
-        "شبكة تنمو مع مساهميها. تستضيف جهازك، تتصفّح مالكيه بالاسم، تختار من تشغّل عنده.",
-      metric: "@handle",
-      metricLabel: "هويّة مرئيّة",
-    },
-  ];
-
-  return (
-    <section id="why" className="py-24 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6">
-        <SectionHeader
-          eyebrow="لماذا محلّيّة؟"
-          title={
-            <>
-              بنية تحتيّة للذكاء الاصطناعي،
-              <br />
-              <span className="text-accent">قريبة منك.</span>
-            </>
-          }
-          sub="الفرق بين تأجير GPU خارج المملكة وتأجير GPU داخلها ليس رفاهيّة. هو فرق في الأداء، التسعير، والسيطرة."
-        />
-
-        <div className="mt-16 grid md:grid-cols-3 gap-5">
-          {cards.map((c) => (
-            <article key={c.title} className="card p-7 flex flex-col gap-5">
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="mono text-accent text-3xl font-semibold leading-none">
-                  {c.metric}
-                </span>
-                <span className="text-xs text-muted">{c.metricLabel}</span>
-              </div>
-              <h3 className="text-xl font-semibold">{c.title}</h3>
-              <p className="text-muted-hi leading-[1.8] text-[0.95rem]">{c.body}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* How it works                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -344,27 +259,27 @@ function HowItWorks() {
   const steps = [
     {
       n: "01",
-      title: "اختر عقدة",
+      title: "اختر معالج",
       body:
-        "تصفّح السوق. شاهد نوع GPU، عدد الذاكرة، واسم المالك. اختر العقدة المناسبة لعملك.",
+        "تصفح السوق. شاهد نوع GPU، عدد الذاكرة، واسم المالك. اختر المعالج المناسب لعملك.",
     },
     {
       n: "02",
       title: "أرسل حاوية",
       body:
-        "صورة Docker + أمر تشغيل + عدد GPUs. المنصّة تسحب الصورة، تشغّل الحاوية بعزل كامل، وتُعيد المخرجات لك.",
+        "صورة Docker + أمر تشغيل + عدد GPUs. المنصة تسحب الصورة، تشغل الحاوية بعزل كامل، وتعيد المخرجات لك.",
     },
     {
       n: "03",
       title: "راقب السجلات",
       body:
-        "بثّ مباشر للسجلات، تنبيهات الحالة، وإلغاء فوري. ما يخرج من الحاوية هو ما يصل إليك — بدون وسطاء.",
+        "بث مباشر للسجلات، تنبيهات الحالة، وإلغاء فوري. ما يخرج من الحاوية هو ما يصل إليك — بدون وسطاء.",
     },
   ];
 
   return (
-    <section id="how" className="py-24 lg:py-32 border-y border-border">
-      <div className="mx-auto max-w-7xl px-6">
+    <section id="how" className="py-14 lg:py-20 border-y border-border">
+      <div className="mx-auto max-w-6xl px-6 lg:px-10">
         <SectionHeader
           eyebrow="كيف تعمل؟"
           title={
@@ -374,10 +289,10 @@ function HowItWorks() {
               <span className="text-accent">من الصفر حتى التدريب.</span>
             </>
           }
-          sub="منصّة حاويات رفيعة. لا افتراضات عن عملك، لا قوالب، لا قيود على بيئة التشغيل."
+          sub="منصة حاويات رفيعة. لا افتراضات عن عملك، لا قوالب، لا قيود على بيئة التشغيل."
         />
 
-        <div className="mt-16 grid md:grid-cols-3 gap-5">
+        <div className="mt-10 lg:mt-12 grid md:grid-cols-3 gap-5">
           {steps.map((s) => (
             <div key={s.n} className="card p-7 flex flex-col gap-4">
               <span className="mono text-muted text-sm tracking-wider">{s.n}</span>
@@ -397,10 +312,10 @@ function HowItWorks() {
 
 function DualAudience() {
   return (
-    <section id="audience" className="py-24 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6">
+    <section id="audience" className="py-14 lg:py-20">
+      <div className="mx-auto max-w-6xl px-6 lg:px-10">
         <SectionHeader
-          eyebrow="مَن يستخدم الشبكة؟"
+          eyebrow="من يستخدم الشبكة؟"
           title={
             <>
               جانبان من سوق واحد.
@@ -410,13 +325,13 @@ function DualAudience() {
           }
         />
 
-        <div className="mt-16 grid md:grid-cols-2 gap-5">
+        <div className="mt-10 lg:mt-12 grid md:grid-cols-2 gap-5">
           <AudienceCard
             kind="renter"
-            title="للباحثين والمطوّرين"
-            subtitle="شغّل تدريبك، استنتاجك، وتجاربك على GPU محلّيّة — بدون إعداد بنية تحتيّة."
+            title="للباحثين والمطورين"
+            subtitle="شغل تدريبك، استنتاجك، وتجاربك على GPU محلية — بدون إعداد بنية تحتية."
             bullets={[
-              "واجهة عربيّة + CLI + API",
+              "واجهة عربية + CLI + API",
               "تسعير بالساعة، بدون التزامات",
               "سجلات مباشرة وإلغاء فوري",
               "متوافق مع أي صورة Docker",
@@ -426,14 +341,14 @@ function DualAudience() {
           <AudienceCard
             kind="host"
             title="لمالكي الأجهزة"
-            subtitle="سجّل جهاز GPU خاصّتك واكسب مقابل الوقت الخامل. تركيب دقيقة واحدة."
+            subtitle="سجل جهاز GPU خاصتك واكسب مقابل الوقت الخامل. تركيب دقيقة واحدة."
             bullets={[
-              "رمز تسجيل لمرّة واحدة",
+              "رمز تسجيل لمرة واحدة",
               "عزل حاويات كامل — لا SSH، لا وصول دائم",
-              "إيقاف مؤقّت متى شئت",
-              "هويّتك مرئيّة: العملاء يختارونك بالاسم",
+              "إيقاف مؤقت متى شئت",
+              "هويتك مرئية: العملاء يختارونك بالاسم",
             ]}
-            cta={{ label: "استضف عقدة", href: "/app" }}
+            cta={{ label: "استضف معالج", href: "/app" }}
           />
         </div>
       </div>
@@ -536,39 +451,6 @@ function HostIcon() {
 }
 
 /* ------------------------------------------------------------------ */
-/* CTA band                                                           */
-/* ------------------------------------------------------------------ */
-
-function CtaBand() {
-  return (
-    <section className="py-24 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="card-hi dot-pattern p-10 lg:p-16 text-center flex flex-col items-center gap-8">
-          <h2 className="text-4xl lg:text-5xl font-bold tracking-tight max-w-3xl">
-            بنيتك التحتيّة.
-            <br />
-            <span className="text-accent">ضمن المملكة.</span>
-          </h2>
-          <p className="text-muted-hi text-lg max-w-xl leading-[1.75]">
-            انضمّ إلى الإصدار التجريبي المفتوح للأصدقاء. مستخدمون وعقد محدودة اليوم،
-            شبكة مفتوحة غدًا.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Link href="/app" className="btn-primary">
-              ابدأ الآن
-              <ArrowIcon />
-            </Link>
-            <a href="#how" className="btn-secondary">
-              اقرأ كيف تعمل
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Section header                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -586,7 +468,7 @@ function SectionHeader({
       <span className="text-accent text-sm font-medium tracking-wide">
         {eyebrow}
       </span>
-      <h2 className="text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15]">
+      <h2 className="display-tight text-[2.15rem] lg:text-[2.95rem] font-bold leading-[1.15]">
         {title}
       </h2>
       {sub && (
@@ -603,7 +485,7 @@ function SectionHeader({
 function SiteFooter() {
   const cols: { title: string; links: { label: string; href: string }[] }[] = [
     {
-      title: "المنصّة",
+      title: "المنصة",
       links: [
         { label: "الميزات", href: "#why" },
         { label: "كيف تعمل", href: "#how" },
@@ -611,7 +493,7 @@ function SiteFooter() {
       ],
     },
     {
-      title: "المطوّرون",
+      title: "المطورون",
       links: [
         { label: "الوثائق", href: "/app" },
         { label: "CLI", href: "/app" },
@@ -630,7 +512,7 @@ function SiteFooter() {
 
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto max-w-7xl px-6 py-16 grid md:grid-cols-4 gap-10">
+      <div className="mx-auto max-w-6xl px-6 lg:px-10 py-16 grid md:grid-cols-4 gap-10">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2.5">
             <Logo />
@@ -639,7 +521,7 @@ function SiteFooter() {
             </span>
           </div>
           <p className="text-sm text-muted leading-[1.8] max-w-xs">
-            شبكة وحدات معالجة رسومية موزّعة داخل المملكة. مفتوحة المصدر.
+            شبكة وحدات معالجة رسومية موزعة داخل المملكة. مفتوحة المصدر.
           </p>
         </div>
 
@@ -662,13 +544,13 @@ function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-6 py-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="mx-auto max-w-6xl px-6 lg:px-10 py-6 flex flex-wrap items-center justify-between gap-4">
           <span className="text-xs text-muted">
             © 2026 شبكة <span className="mono">GPU</span> — كل الحقوق محفوظة.
           </span>
           <div className="flex items-center gap-5 text-xs text-muted">
             <a href="#" className="hover:text-foreground transition-colors">
-              الخصوصيّة
+              الخصوصية
             </a>
             <a href="#" className="hover:text-foreground transition-colors">
               شروط الاستخدام
