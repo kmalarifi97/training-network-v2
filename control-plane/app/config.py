@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     jwt_expire_days: int = 7
 
     control_plane_public_url: str = "http://localhost:8000"
+    # Where the browser-facing UI lives — used to build verify_url for
+    # device-code onboarding (agent prints "visit <ui_public_url>/activate").
+    # The UI is served from a different origin than the API in prod
+    # (UI :3001, API :8000), so this is separate from control_plane_public_url.
+    ui_public_url: str = "http://localhost:3001"
     claim_token_ttl_hours: int = 24
 
 

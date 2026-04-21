@@ -7,6 +7,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://gpu:gpu@db:5432/gpu_network
       JWT_SECRET: dev-secret-change-in-prod
       CONTROL_PLANE_PUBLIC_URL: ${CONTROL_PLANE_PUBLIC_URL:-http://34.18.164.66:8000}
+      UI_PUBLIC_URL: ${UI_PUBLIC_URL:-http://34.18.164.66:3001}
     depends_on:
       db:
         condition: service_healthy

@@ -9,6 +9,7 @@ type command struct {
 
 var commands = []command{
 	{"init", runInit},
+	{"login", runLogin},
 	{"start", runStart},
 	{"status", runStatus},
 	{"version", runVersion},
@@ -37,7 +38,8 @@ Usage:
   gpu-agent <command>
 
 Commands:
-  init      Register this node with a control plane
+  init      Register this node with a claim token (legacy)
+  login     Register this node via browser-approved device code
   start     Run the agent daemon
   status    Show local agent status
   version   Show agent version

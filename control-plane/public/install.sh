@@ -197,24 +197,49 @@ UNIT
 chmod 0644 "${SERVICE_PATH}"
 systemctl daemon-reload
 
-# --- done ---
+# --- device-code onboarding ---
+#
+# Skip `gpu-agent login` if this machine is already registered (re-install
+# case) — the existing token is still valid.
+
+ALREADY_REGISTERED=0
+if [[ -s "$CONFIG_PATH" ]] && grep -q '"agent_token"' "$CONFIG_PATH" 2>/dev/null; then
+    ALREADY_REGISTERED=1
+fi
+
+if [[ $ALREADY_REGISTERED -eq 1 ]]; then
+    log "This machine is already registered (${CONFIG_PATH} has an agent token)."
+else
+    log "Starting device-code onboarding. A short code will appear below —"
+    log "open it in your browser on any device, sign in, and approve."
+    echo
+    if ! "${BIN_PATH}" login \
+            --control-plane="${CONTROL_PLANE}" \
+            --config="${CONFIG_PATH}"; then
+        cat >&2 <<EOF
+
+!! gpu-agent login did not complete. The binary and systemd unit are
+!! installed, so you can finish later by running:
+
+    sudo ${BIN_PATH} login --control-plane=${CONTROL_PLANE} --config=${CONFIG_PATH}
+    sudo systemctl enable --now gpu-agent
+
+EOF
+        exit 1
+    fi
+fi
+
+# --- enable service ---
+
+log "Enabling gpu-agent.service"
+systemctl enable --now gpu-agent
 
 cat <<EOF
 
-==> gpu-agent installed.
+==> gpu-agent installed and running.
 
-Next steps:
-
-  1. Register this machine with the claim token from the web UI:
-       sudo gpu-agent init \\
-           --config=${CONFIG_PATH} \\
-           --control-plane=${CONTROL_PLANE} \\
-           --claim-token=<YOUR_TOKEN>
-
-  2. Enable the service so it starts on boot:
-       sudo systemctl enable --now gpu-agent
-
-  3. Confirm it's heartbeating:
-       sudo journalctl -u gpu-agent -f
+Check it:
+    sudo systemctl status gpu-agent
+    sudo journalctl -u gpu-agent -f
 
 EOF

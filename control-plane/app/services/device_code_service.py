@@ -52,7 +52,7 @@ class DeviceCodeService:
             gpu_count=gpu_count,
             expires_at=expires_at,
         )
-        verify_url = f"{settings.control_plane_public_url.rstrip('/')}/activate"
+        verify_url = f"{settings.ui_public_url.rstrip('/')}/activate"
         await self.session.commit()
         await self.session.refresh(record)
         return record, polling_plaintext, verify_url
