@@ -62,6 +62,17 @@ class ClaimTokenInvalid(DomainError):
         self.reason = reason
 
 
+class DeviceCodeInvalid(DomainError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"Device code is invalid: {reason}")
+        self.reason = reason
+
+
+class DeviceCodeNotApproved(DomainError):
+    def __init__(self) -> None:
+        super().__init__("Device code has not been approved yet")
+
+
 class AccountNotActive(DomainError):
     def __init__(self, status: str) -> None:
         super().__init__(f"Account is {status}; contact an administrator")

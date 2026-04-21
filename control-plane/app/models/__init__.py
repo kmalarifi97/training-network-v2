@@ -2,6 +2,7 @@ from app.models.api_key import ApiKey
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.claim_token import ClaimToken
+from app.models.device_code import DeviceCode
 from app.models.job import Job
 from app.models.job_log import JobLog
 from app.models.node import Node
@@ -13,6 +14,7 @@ __all__ = [
     "AuditLog",
     "Base",
     "ClaimToken",
+    "DeviceCode",
     "Job",
     "JobLog",
     "Node",

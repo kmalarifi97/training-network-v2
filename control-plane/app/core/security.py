@@ -21,6 +21,14 @@ AGENT_TOKEN_PREFIX = "gpuagent_"
 AGENT_TOKEN_RANDOM_BYTES = 24
 AGENT_TOKEN_LOOKUP_PREFIX_LENGTH = 12
 
+POLLING_TOKEN_PREFIX = "gpudev_"
+POLLING_TOKEN_RANDOM_BYTES = 24
+POLLING_TOKEN_LOOKUP_PREFIX_LENGTH = 12
+
+# Crockford-ish alphabet — excludes 0/O/1/I/L/U so humans can't confuse them
+DEVICE_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ"
+DEVICE_CODE_GROUP_LENGTH = 4
+
 
 def hash_password(plain_password: str) -> str:
     return bcrypt.hashpw(
@@ -88,6 +96,31 @@ def verify_agent_token(plain_token: str, hashed_token: str) -> bool:
 
 def agent_token_lookup_prefix(plain_token: str) -> str:
     return plain_token[:AGENT_TOKEN_LOOKUP_PREFIX_LENGTH]
+
+
+def generate_polling_token() -> tuple[str, str, str]:
+    """Create a fresh device-code polling token. Returns (plaintext, lookup_prefix, bcrypt_hash)."""
+    token = POLLING_TOKEN_PREFIX + secrets.token_urlsafe(POLLING_TOKEN_RANDOM_BYTES)
+    lookup_prefix = token[:POLLING_TOKEN_LOOKUP_PREFIX_LENGTH]
+    token_hash = bcrypt.hashpw(
+        token.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    ).decode("utf-8")
+    return token, lookup_prefix, token_hash
+
+
+def verify_polling_token(plain_token: str, hashed_token: str) -> bool:
+    return bcrypt.checkpw(plain_token.encode("utf-8"), hashed_token.encode("utf-8"))
+
+
+def polling_token_lookup_prefix(plain_token: str) -> str:
+    return plain_token[:POLLING_TOKEN_LOOKUP_PREFIX_LENGTH]
+
+
+def generate_device_code() -> str:
+    """Generate an 8-char human-typeable code formatted as XXXX-XXXX."""
+    part1 = "".join(secrets.choice(DEVICE_CODE_ALPHABET) for _ in range(DEVICE_CODE_GROUP_LENGTH))
+    part2 = "".join(secrets.choice(DEVICE_CODE_ALPHABET) for _ in range(DEVICE_CODE_GROUP_LENGTH))
+    return f"{part1}-{part2}"
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:

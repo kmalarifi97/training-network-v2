@@ -10,6 +10,8 @@ from app.core.errors import (
     ApiKeyNotOwned,
     AuditEventNotFound,
     ClaimTokenInvalid,
+    DeviceCodeInvalid,
+    DeviceCodeNotApproved,
     EmailAlreadyExists,
     InsufficientCredits,
     InvalidCredentials,
@@ -122,6 +124,26 @@ async def claim_token_invalid_handler(
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": str(exc), "reason": exc.reason},
+    )
+
+
+@app.exception_handler(DeviceCodeInvalid)
+async def device_code_invalid_handler(
+    _: Request, exc: DeviceCodeInvalid
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc), "reason": exc.reason},
+    )
+
+
+@app.exception_handler(DeviceCodeNotApproved)
+async def device_code_not_approved_handler(
+    _: Request, exc: DeviceCodeNotApproved
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={"detail": str(exc)},
     )
 
 
