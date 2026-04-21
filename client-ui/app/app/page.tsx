@@ -9,7 +9,6 @@ import {
   setEmail as persistEmail,
   setToken,
   type ApiError,
-  type ClaimTokenResponse,
   type JobLogEntry,
   type JobLogListResponse,
   type JobPublic,
@@ -40,8 +39,7 @@ type Phase =
   | "rent_running"
   | "rent_done"
   | "my_gpus"
-  | "add_gpu_form"
-  | "add_gpu_success"
+  | "add_gpu"
   | "cli_install";
 
 /* Which sidebar section each phase belongs to. */
@@ -98,8 +96,6 @@ export default function Home() {
   const [image, setImage] = useState(DEFAULT_IMAGE);
   const [command, setCommand] = useState(DEFAULT_COMMAND);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const [newGpuName, setNewGpuName] = useState("");
-  const [claimToken, setClaimToken] = useState<ClaimTokenResponse | null>(null);
 
   const logout = useCallback(() => {
     clearToken();
@@ -208,33 +204,10 @@ export default function Home() {
               />
             )}
             {phase === "my_gpus" && (
-              <MyGpusView
-                onAddNew={() => {
-                  setNewGpuName("");
-                  setPhase("add_gpu_form");
-                }}
-              />
+              <MyGpusView onAddNew={() => setPhase("add_gpu")} />
             )}
-            {phase === "add_gpu_form" && (
-              <AddGpuFormView
-                name={newGpuName}
-                setName={setNewGpuName}
-                onBack={() => setPhase("my_gpus")}
-                onSuccess={(data) => {
-                  setClaimToken(data);
-                  setPhase("add_gpu_success");
-                }}
-              />
-            )}
-            {phase === "add_gpu_success" && claimToken && (
-              <AddGpuSuccessView
-                name={newGpuName || "جهازي الجديد"}
-                claim={claimToken}
-                onDone={() => {
-                  setClaimToken(null);
-                  setPhase("my_gpus");
-                }}
-              />
+            {phase === "add_gpu" && (
+              <AddGpuView onBack={() => setPhase("my_gpus")} />
             )}
             {phase === "cli_install" && <CliInstallView />}
           </main>
@@ -1591,8 +1564,8 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
           <div className="text-4xl mb-3">🖥️</div>
           <h3 className="text-base font-semibold text-foreground mb-2">لم تضف أي جهاز بعد</h3>
           <p className="text-xs text-muted-hi mb-5 max-w-sm mx-auto leading-relaxed">
-            اضغط «إضافة GPU جديد» لتوليد رمز تسجيل وتشغيل الوكيل على جهازك. لا نخزن أي
-            بيانات على الجهاز — فقط يتصل بالشبكة عند الحاجة.
+            اضغط «إضافة GPU جديد» لنسخ أمر التثبيت. يشغل الوكيل على جهازك ويطلب
+            منك اعتماد رمز قصير في المتصفح — لا نخزن بيانات على الجهاز.
           </p>
           <button
             onClick={onAddNew}
@@ -1622,7 +1595,7 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
           <div className="text-xs text-muted mt-1.5 leading-relaxed">
             يمكنك إضافة أي جهاز يحتوي على كرت شاشة NVIDIA — لابتوبك، حاسوبك المنزلي،
             أو جهاز في عملك. اضغط <span className="text-accent">«إضافة GPU جديد»</span>{" "}
-            لتوليد رمز التسجيل وأمر التشغيل.
+            لنسخ أمر التثبيت ثم اعتماد رمز التفعيل من المتصفح.
           </div>
         </div>
       </div>
@@ -1667,119 +1640,7 @@ function MyGpuRow({ node }: { node: NodePublic }) {
 }
 
 /* ==================================================================
-   Add GPU form
-   ================================================================== */
-
-function AddGpuFormView({
-  name,
-  setName,
-  onBack,
-  onSuccess,
-}: {
-  name: string;
-  setName: (v: string) => void;
-  onBack: () => void;
-  onSuccess: (claim: ClaimTokenResponse) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      const claim = await apiFetch<ClaimTokenResponse>(
-        "/api/nodes/claim-tokens",
-        { method: "POST" },
-      );
-      onSuccess(claim);
-    } catch (err) {
-      const e = err as ApiError;
-      if (e?.status === 403) {
-        setError(
-          "حسابك غير مفعل لاستضافة GPU. تواصل مع المشرف لتفعيل صلاحية الاستضافة.",
-        );
-      } else {
-        setError(e?.detail || "فشل إنشاء رمز التسجيل — حاول مرة أخرى");
-      }
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="max-w-2xl">
-      <button
-        onClick={onBack}
-        className="text-xs text-muted hover:text-muted-hi transition-colors mb-6"
-      >
-        → العودة إلى أجهزتي
-      </button>
-
-      <h1 className="text-2xl font-bold tracking-tight mb-2">إضافة GPU جديد</h1>
-      <p className="text-sm text-muted-hi mb-8 max-w-xl leading-relaxed">
-        أعط جهازك اسما مختصرا يساعدك على التعرف عليه في لوحتك (ولن يراه أحد آخر في
-        الشبكة). بعد الإنشاء سنولد لك رمز تسجيل وأمر تشغيل تنسخه إلى جهازك.
-      </p>
-
-      <form
-        onSubmit={submit}
-        className="rounded-xl border border-border bg-surface p-7 space-y-6"
-      >
-        <Field
-          label="اسم الـ GPU"
-          hint="أمثلة شائعة: لابتوبي، حاسوب المنزل، جهاز العمل، PC الألعاب."
-        >
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            autoFocus
-            placeholder="مثلا: لابتوبي"
-            className="text-sm w-full rounded-lg border border-border-hi bg-surface-hi/60 px-3.5 py-2.5 text-foreground placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40"
-          />
-        </Field>
-
-        <div className="rounded-lg border border-border bg-background/30 p-4 text-xs text-muted-hi leading-relaxed space-y-2">
-          <div className="text-foreground font-semibold text-sm mb-1">ماذا سيحدث بعد ذلك؟</div>
-          <div className="flex items-start gap-2">
-            <span className="text-accent">1.</span>
-            <span>سننشئ لك رمز تسجيل صالح لـ24 ساعة.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-accent">2.</span>
-            <span>تقوم بتشغيل أمر بسيط على الجهاز الذي يحتوي على كرت NVIDIA.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-accent">3.</span>
-            <span>الوكيل (agent) يتصل بالشبكة، ويظهر الجهاز في قائمتك تلقائيا.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-accent">4.</span>
-            <span>يصبح متاحا للاستئجار من قبل مستخدمين آخرين.</span>
-          </div>
-        </div>
-
-        {error && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 leading-relaxed">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={busy || !name.trim()}
-          className="w-full rounded-lg bg-gradient-to-br from-accent to-accent hover:from-accent-hi hover:to-accent-hi px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {busy ? "جاري الإنشاء..." : "إنشاء رمز التسجيل ←"}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-/* ==================================================================
-   Add GPU — Success screen (shows install command)
+   Add GPU — browser-approved device-code flow
    ================================================================== */
 
 function copyToClipboard(text: string, onDone: () => void) {
@@ -1811,23 +1672,14 @@ function fallbackCopy(text: string, onDone: () => void) {
   document.body.removeChild(ta);
 }
 
-function AddGpuSuccessView({
-  name,
-  claim,
-  onDone,
-}: {
-  name: string;
-  claim: ClaimTokenResponse;
-  onDone: () => void;
-}) {
-  const claimTokenStr = claim.token;
-  const controlPlane = useMemo(() => {
-    const m = claim.install_command.match(/--control-plane=(\S+)/);
-    return m ? m[1] : "http://34.18.164.66:8000";
-  }, [claim.install_command]);
-
+function AddGpuView({ onBack }: { onBack: () => void }) {
   const [os, setOs] = useState<"windows" | "linux" | "mac">("windows");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const controlPlane = useMemo(() => {
+    if (typeof window === "undefined") return "http://localhost:8000";
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }, []);
 
   function handleCopy(text: string, key: string) {
     copyToClipboard(text, () => {
@@ -1837,34 +1689,22 @@ function AddGpuSuccessView({
   }
 
   const powershellCmd = `wsl --install -d Ubuntu`;
-
-  const bashCmd = `# 1 — Install the agent (once per machine)
-curl -fsSL ${controlPlane}/public/install.sh | sudo bash
-
-# 2 — Register this machine with your claim token
-sudo gpu-agent init \\
-    --config=/etc/gpu-agent/config.json \\
-    --control-plane=${controlPlane} \\
-    --claim-token=${claimTokenStr} \\
-    --name="${name}"
-
-# 3 — Start the service (survives reboots)
-sudo systemctl enable --now gpu-agent`;
+  const installCmd = `curl -fsSL ${controlPlane}/public/install.sh | sudo bash`;
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-7">
-        <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-dim px-3 py-1 text-[11px] font-medium text-accent mb-3">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-          تم إنشاء رمز التسجيل
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight mb-2">
-          خطوة واحدة أخيرة: شغل الأوامر على «{name}»
-        </h1>
-        <p className="text-sm text-muted-hi max-w-xl leading-relaxed">
-          اختر نظام التشغيل الذي يعمل عليه الجهاز الذي تريد إضافته.
-        </p>
-      </div>
+      <button
+        onClick={onBack}
+        className="text-xs text-muted hover:text-muted-hi transition-colors mb-6"
+      >
+        → العودة إلى أجهزتي
+      </button>
+
+      <h1 className="text-2xl font-bold tracking-tight mb-2">إضافة GPU جديد</h1>
+      <p className="text-sm text-muted-hi mb-7 max-w-xl leading-relaxed">
+        شغل أمرا واحدا على الجهاز الذي تريد إضافته. سيطبع لك الوكيل رمز تفعيل
+        قصير، ترجع به إلى المتصفح وتعتمده — خطوة واحدة لا نسخ للرموز.
+      </p>
 
       {/* OS tabs */}
       <div className="mb-5 inline-flex rounded-lg border border-border bg-surface p-1 gap-1">
@@ -1898,13 +1738,14 @@ sudo systemctl enable --now gpu-agent`;
                 أجهزة ماك لا يمكنها استضافة GPU
               </div>
               <div className="text-sm text-amber-800/90 leading-relaxed mb-3">
-                أجهزة ماك الحديثة تستخدم كروت شاشة من Apple (معالج M1/M2/M3) ولا تحتوي
-                على كرت NVIDIA. منصتنا تشغل الحاويات باستخدام{" "}
-                <span className="font-mono" dir="ltr">docker run --gpus all</span> وهذا
-                يتطلب كرت NVIDIA تحديدا.
+                أجهزة ماك الحديثة تستخدم كروت شاشة من Apple (معالج M1/M2/M3) ولا
+                تحتوي على كرت NVIDIA. منصتنا تشغل الحاويات باستخدام{" "}
+                <span className="font-mono" dir="ltr">docker run --gpus all</span>{" "}
+                وهذا يتطلب كرت NVIDIA تحديدا.
               </div>
               <div className="text-sm text-amber-800/90 leading-relaxed">
-                يمكنك بدلا من ذلك <span className="font-semibold text-accent">استئجار GPU</span>{" "}
+                يمكنك بدلا من ذلك{" "}
+                <span className="font-semibold text-accent">استئجار GPU</span>{" "}
                 من الأعضاء الآخرين في الشبكة عبر التبويب الأيمن «استئجار GPU».
               </div>
             </div>
@@ -1914,15 +1755,20 @@ sudo systemctl enable --now gpu-agent`;
 
       {os === "windows" && (
         <>
-          {/* Step 0: WSL install via PowerShell */}
+          {/* Step 0: WSL install */}
           <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-500/20 text-sky-700 text-[10px] font-bold">0</span>
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-500/20 text-sky-700 text-[10px] font-bold">
+              0
+            </span>
             <h3 className="text-sm font-semibold text-foreground">
               تثبيت WSL (مرة واحدة فقط)
             </h3>
           </div>
           <p className="text-xs text-muted mb-3 leading-relaxed">
-            افتح <span className="font-mono text-muted-hi" dir="ltr">PowerShell</span>{" "}
+            افتح{" "}
+            <span className="font-mono text-muted-hi" dir="ltr">
+              PowerShell
+            </span>{" "}
             كمسؤول (Run as administrator)، ثم انسخ الأمر التالي. سيقوم Windows
             بتحميل Ubuntu وطلب إعادة التشغيل.
           </p>
@@ -1935,74 +1781,93 @@ sudo systemctl enable --now gpu-agent`;
           <p className="text-xs text-muted mt-3 mb-6 leading-relaxed">
             بعد إعادة التشغيل، ستفتح نافذة Ubuntu تلقائيا وستطلب منك اختيار اسم
             مستخدم وكلمة مرور (للينكس داخل WSL، منفصلة عن حساب Windows). بعدها،
-            انتقل للخطوة التالية <span className="font-bold text-muted-hi">داخل نافذة Ubuntu</span> وليس PowerShell.
+            انتقل للخطوة التالية{" "}
+            <span className="font-bold text-muted-hi">داخل نافذة Ubuntu</span>{" "}
+            وليس PowerShell.
           </p>
 
-          {/* Steps 1-3: bash inside WSL Ubuntu */}
+          {/* Step 1: curl install */}
           <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">1-3</span>
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
+              1
+            </span>
             <h3 className="text-sm font-semibold text-foreground">
-              تثبيت الوكيل داخل Ubuntu
+              ثبت الوكيل داخل Ubuntu
             </h3>
           </div>
           <p className="text-xs text-muted mb-3 leading-relaxed">
-            انسخ والصق الكتلة كاملة داخل نافذة Ubuntu terminal.
+            الأمر يثبت الوكيل والتبعيات، ثم يطبع رمز التفعيل ويبقى ينتظر حتى
+            تعتمده.
           </p>
           <CodeBlock
             language="bash"
-            code={bashCmd}
+            code={installCmd}
             copied={copiedKey === "bash"}
-            onCopy={() => handleCopy(bashCmd, "bash")}
+            onCopy={() => handleCopy(installCmd, "bash")}
           />
         </>
       )}
 
       {os === "linux" && (
         <>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
+              1
+            </span>
+            <h3 className="text-sm font-semibold text-foreground">
+              ثبت الوكيل على الجهاز
+            </h3>
+          </div>
           <p className="text-xs text-muted mb-3 leading-relaxed">
-            افتح terminal على جهاز Linux الذي يحتوي على كرت NVIDIA والصق الكتلة التالية.
-            تأكد أن <span className="font-mono" dir="ltr">docker</span> و{" "}
-            <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>{" "}
-            مثبتان، و <span className="font-mono" dir="ltr">nvidia-smi</span> يعمل.
+            افتح terminal على جهاز Linux يحتوي على كرت NVIDIA والصق الأمر. يثبت
+            الوكيل والتبعيات ثم يطبع رمز التفعيل وينتظر حتى تعتمده.
           </p>
           <CodeBlock
             language="bash"
-            code={bashCmd}
+            code={installCmd}
             copied={copiedKey === "bash"}
-            onCopy={() => handleCopy(bashCmd, "bash")}
+            onCopy={() => handleCopy(installCmd, "bash")}
           />
         </>
       )}
 
-      {/* Token warning (shown for windows + linux, hidden on mac) */}
+      {/* Approve-the-code note + link to /activate */}
       {os !== "mac" && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-5 mt-6">
+        <div className="rounded-xl border border-accent/30 bg-accent-dim/60 p-5 mt-6 mb-5">
           <div className="flex items-start gap-3">
-            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-800 flex items-center justify-center text-xs flex-shrink-0 font-bold">
-              !
+            <div className="h-6 w-6 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs flex-shrink-0 font-bold">
+              2
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-amber-800 mb-1">
-                هذا الرمز يعرض مرة واحدة فقط
+              <div className="text-sm font-semibold text-foreground mb-1.5">
+                اعتمد الرمز من المتصفح
               </div>
-              <div className="text-xs text-amber-700 leading-relaxed mb-3">
-                احفظه الآن. لن نتمكن من إظهاره لك مرة أخرى. صلاحيته 24 ساعة ويستخدم مرة واحدة.
+              <div className="text-xs text-muted-hi leading-relaxed mb-3">
+                بعد تشغيل الأمر سيطبع الوكيل رمزا من ثمانية أحرف (مثل{" "}
+                <span className="font-mono text-foreground" dir="ltr">
+                  ABCD-EFGH
+                </span>
+                ). افتح صفحة التفعيل، سجل دخولك بنفس حسابك، وأدخل الرمز.
               </div>
-              <code
-                dir="ltr"
-                className="block rounded-md bg-surface-hi/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-800 font-mono text-start break-all"
+              <a
+                href="/activate"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent hover:bg-accent-hi px-3.5 py-2 text-xs font-semibold text-white transition-colors"
               >
-                {claimTokenStr}
-              </code>
+                <span>فتح صفحة التفعيل</span>
+                <span aria-hidden>↗</span>
+              </a>
             </div>
           </div>
         </div>
       )}
 
-      {/* Requirements — hidden on mac because they don't apply */}
       {os !== "mac" && (
         <div className="rounded-xl border border-border bg-surface p-5 mb-8">
-          <div className="text-sm font-semibold text-foreground mb-3">متطلبات الجهاز</div>
+          <div className="text-sm font-semibold text-foreground mb-3">
+            متطلبات الجهاز
+          </div>
           <ul className="space-y-2 text-xs text-muted-hi">
             <li className="flex items-start gap-2">
               <span className="text-accent mt-0.5">✓</span>
@@ -2011,12 +1876,16 @@ sudo systemctl enable --now gpu-agent`;
             <li className="flex items-start gap-2">
               <span className="text-accent mt-0.5">✓</span>
               <span>
-                Docker مثبت، مع إضافة <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>.
+                المثبت يضيف Docker و{" "}
+                <span className="font-mono" dir="ltr">
+                  nvidia-container-toolkit
+                </span>{" "}
+                تلقائيا إن لم يكونا موجودين.
               </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-accent mt-0.5">✓</span>
-              <span>اتصال إنترنت خارج فقط (لا يتطلب فتح بورت — الجهاز يتصل بالشبكة).</span>
+              <span>اتصال إنترنت خارج فقط (لا يتطلب فتح بورت).</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-accent mt-0.5">✓</span>
@@ -2027,12 +1896,10 @@ sudo systemctl enable --now gpu-agent`;
       )}
 
       <button
-        onClick={onDone}
+        onClick={onBack}
         className="w-full rounded-lg bg-accent hover:bg-accent-hi px-4 py-3 text-sm font-semibold text-white transition-colors"
       >
-        {os === "mac"
-          ? "العودة إلى قائمة أجهزتي"
-          : `حسنا، سيظهر «${name}» في قائمتي بعد التشغيل`}
+        {os === "mac" ? "العودة إلى قائمة أجهزتي" : "تم — العودة إلى أجهزتي"}
       </button>
     </div>
   );
