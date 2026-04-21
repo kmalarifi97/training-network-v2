@@ -1,19 +1,198 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* Page — warm beige "parchment" */
+  --background: #ede8d0;
+  --surface: #f6f1dd;
+  --surface-hi: #fcf8e9;
+
+  /* Text — dark ink with a hint of warmth */
+  --foreground: #1a1e18;
+  --muted: #88897a;
+  --muted-hi: #4a4d42;
+
+  /* Borders — dark, semi-transparent */
+  --border: rgba(20, 24, 20, 0.10);
+  --border-hi: rgba(20, 24, 20, 0.18);
+
+  /* Accent — Saudi flag green, reads strong on beige */
+  --accent: #006c35;
+  --accent-hi: #008a44;
+  --accent-ink: #ffffff;
+  --accent-dim: rgba(0, 108, 53, 0.10);
+
+  --danger: #b23b2b;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-hi: var(--surface-hi);
+  --color-border: var(--border);
+  --color-border-hi: var(--border-hi);
+  --color-muted: var(--muted);
+  --color-muted-hi: var(--muted-hi);
+  --color-accent: var(--accent);
+  --color-accent-hi: var(--accent-hi);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-dim: var(--accent-dim);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-cairo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Light radiates outward from the terminal (left side of hero in RTL). */
+.hero-grid {
+  background-image:
+    /* tight core — hottest point at the terminal's center */
+    radial-gradient(ellipse 360px 260px at 28% 52%, rgba(0, 108, 53, 0.42), transparent 55%),
+    /* middle aura */
+    radial-gradient(ellipse 720px 520px at 28% 52%, rgba(0, 108, 53, 0.22), transparent 62%),
+    /* far wash — bleeds across the hero */
+    radial-gradient(ellipse 1400px 1000px at 28% 52%, rgba(0, 108, 53, 0.09), transparent 70%),
+    /* subtle grid */
+    linear-gradient(to right, rgba(20, 24, 20, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 24, 20, 0.045) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+}
+
+.dot-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(20, 24, 20, 0.08) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.text-gradient {
+  background: linear-gradient(180deg, #151814 0%, #6a6d5e 140%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Green glow — the terminal is the light source. */
+.accent-ring {
+  box-shadow:
+    0 0 0 1px rgba(0, 108, 53, 0.18),
+    0 0 40px 2px rgba(0, 108, 53, 0.22),
+    0 30px 90px -10px rgba(0, 108, 53, 0.38),
+    0 8px 20px -6px rgba(20, 24, 20, 0.12);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.card-hi {
+  background: var(--surface-hi);
+  border: 1px solid var(--border-hi);
+  border-radius: 16px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.btn-primary:hover {
+  background: var(--accent-hi);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border-hi);
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.btn-secondary:hover {
+  background: rgba(20, 24, 20, 0.04);
+  border-color: rgba(20, 24, 20, 0.28);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(0, 108, 53, 0.24);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "zero" 1;
+}
+
+.pulse-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--accent);
+}
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: var(--accent);
+  opacity: 0.35;
+  animation: pulse 2s ease-out infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Terminal — a dark "screen" island inside the light page.
+   Overrides theme variables locally so classes like text-muted,
+   text-muted-hi, text-accent render as dark-theme values within. */
+.terminal {
+  --background: #10161d;
+  --surface: #10161d;
+  --surface-hi: #181f29;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hi: rgba(255, 255, 255, 0.14);
+  --foreground: #f4f6f8;
+  --muted: #8b95a4;
+  --muted-hi: #b6c0cf;
+  --accent: #9dff32;
+  background: var(--surface-hi);
+  color: var(--muted-hi);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
 }

@@ -9,8 +9,9 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "شبكة GPU — منصّة التشغيل",
-  description: "شبكة GPU خفيفة وموحّدة. اربط أجهزتك. شغّل حاوياتك.",
+  title: "شبكة GPU السعودية — بنية تحتية محلية للذكاء الاصطناعي",
+  description:
+    "شبكة وحدات معالجة رسومية موزّعة داخل المملكة. اختر عقدة، شغّل حاوية، راقب السجلات — بزمن استجابة محلي.",
 };
 
 export default function RootLayout({
@@ -22,7 +23,7 @@ export default function RootLayout({
       dir="rtl"
       className={`${cairo.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-cairo)]">
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         {children}
       </body>
     </html>

@@ -37,5 +37,8 @@ logs/
 .claude/settings.local.json
 .claude/cache/
 
+# Dev-only compose overrides (e.g. port remaps)
+docker-compose.override.yml
+
 # Personal notes (not for distribution)
 LEARNING_ROADMAP.md
