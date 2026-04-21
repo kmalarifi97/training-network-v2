@@ -1692,7 +1692,7 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
   const installCmd = `curl -fsSL ${controlPlane}/public/install.sh | sudo bash`;
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-2xl">
       <button
         onClick={onBack}
         className="text-xs text-muted hover:text-muted-hi transition-colors mb-6"
@@ -1700,14 +1700,17 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
         → العودة إلى أجهزتي
       </button>
 
-      <h1 className="text-2xl font-bold tracking-tight mb-2">إضافة GPU جديد</h1>
-      <p className="text-sm text-muted-hi mb-7 max-w-xl leading-relaxed">
-        شغل أمرا واحدا على الجهاز الذي تريد إضافته. سيطبع لك الوكيل رمز تفعيل
-        قصير، ترجع به إلى المتصفح وتعتمده — خطوة واحدة لا نسخ للرموز.
+      <h1 className="text-3xl font-bold tracking-tight mb-3">إضافة GPU</h1>
+      <p className="text-sm text-muted-hi mb-8 leading-relaxed max-w-lg">
+        الصق الأمر التالي في الترمنال. سيطبع لك رمز اعتماد، أدخله في{" "}
+        <a href="/activate" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hi">
+          صفحة التفعيل
+        </a>{" "}
+        وانتهيت.
       </p>
 
-      {/* OS tabs */}
-      <div className="mb-5 inline-flex rounded-lg border border-border bg-surface p-1 gap-1">
+      {/* OS tabs — subtle, not numbered */}
+      <div className="mb-6 inline-flex rounded-lg border border-border bg-surface p-1 gap-1">
         {([
           ["windows", "Windows"],
           ["linux", "Linux"],
@@ -1728,179 +1731,56 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
       </div>
 
       {os === "mac" && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 mb-5">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6">
           <div className="flex items-start gap-4">
             <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center text-lg flex-shrink-0">
               ⚠
             </div>
             <div className="flex-1">
               <div className="text-base font-semibold text-amber-900 mb-2">
-                أجهزة ماك لا يمكنها استضافة GPU
-              </div>
-              <div className="text-sm text-amber-800/90 leading-relaxed mb-3">
-                أجهزة ماك الحديثة تستخدم كروت شاشة من Apple (معالج M1/M2/M3) ولا
-                تحتوي على كرت NVIDIA. منصتنا تشغل الحاويات باستخدام{" "}
-                <span className="font-mono" dir="ltr">docker run --gpus all</span>{" "}
-                وهذا يتطلب كرت NVIDIA تحديدا.
+                ماك لا تستضيف GPU
               </div>
               <div className="text-sm text-amber-800/90 leading-relaxed">
-                يمكنك بدلا من ذلك{" "}
-                <span className="font-semibold text-accent">استئجار GPU</span>{" "}
-                من الأعضاء الآخرين في الشبكة عبر التبويب الأيمن «استئجار GPU».
+                كروت شاشة Apple (M1/M2/M3) غير مدعومة. تحتاج كرت NVIDIA على
+                Linux أو Windows مع WSL2. يمكنك بدلا من ذلك{" "}
+                <span className="font-semibold text-accent">استئجار GPU</span>.
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* The single primary action — same shape on Linux and Windows. */}
+      {os !== "mac" && (
+        <CodeBlock
+          language="bash"
+          code={installCmd}
+          copied={copiedKey === "bash"}
+          onCopy={() => handleCopy(installCmd, "bash")}
+        />
+      )}
+
+      {/* Windows pre-req: quiet and secondary, not a numbered step. */}
       {os === "windows" && (
-        <>
-          {/* Step 0: WSL install */}
-          <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-500/20 text-sky-700 text-[10px] font-bold">
-              0
-            </span>
-            <h3 className="text-sm font-semibold text-foreground">
-              تثبيت WSL (مرة واحدة فقط)
-            </h3>
+        <div className="mt-5 rounded-lg border border-border bg-surface/60 p-4">
+          <div className="text-xs text-muted-hi font-medium mb-2">
+            ما عندك WSL بعد؟
           </div>
-          <p className="text-xs text-muted mb-3 leading-relaxed">
-            افتح{" "}
-            <span className="font-mono text-muted-hi" dir="ltr">
+          <div className="text-[11px] text-muted leading-relaxed mb-2.5">
+            شغل هذا مرة واحدة في{" "}
+            <span className="font-mono" dir="ltr">
               PowerShell
             </span>{" "}
-            كمسؤول (Run as administrator)، ثم انسخ الأمر التالي. سيقوم Windows
-            بتحميل Ubuntu وطلب إعادة التشغيل.
-          </p>
+            (كمسؤول)، ثم افتح Ubuntu وألصق الأمر الذي فوق.
+          </div>
           <CodeBlock
             language="powershell"
             code={powershellCmd}
             copied={copiedKey === "ps"}
             onCopy={() => handleCopy(powershellCmd, "ps")}
           />
-          <p className="text-xs text-muted mt-3 mb-6 leading-relaxed">
-            بعد إعادة التشغيل، ستفتح نافذة Ubuntu تلقائيا وستطلب منك اختيار اسم
-            مستخدم وكلمة مرور (للينكس داخل WSL، منفصلة عن حساب Windows). بعدها،
-            انتقل للخطوة التالية{" "}
-            <span className="font-bold text-muted-hi">داخل نافذة Ubuntu</span>{" "}
-            وليس PowerShell.
-          </p>
-
-          {/* Step 1: curl install */}
-          <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
-              1
-            </span>
-            <h3 className="text-sm font-semibold text-foreground">
-              ثبت الوكيل داخل Ubuntu
-            </h3>
-          </div>
-          <p className="text-xs text-muted mb-3 leading-relaxed">
-            الأمر يثبت الوكيل والتبعيات، ثم يطبع رمز التفعيل ويبقى ينتظر حتى
-            تعتمده.
-          </p>
-          <CodeBlock
-            language="bash"
-            code={installCmd}
-            copied={copiedKey === "bash"}
-            onCopy={() => handleCopy(installCmd, "bash")}
-          />
-        </>
-      )}
-
-      {os === "linux" && (
-        <>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
-              1
-            </span>
-            <h3 className="text-sm font-semibold text-foreground">
-              ثبت الوكيل على الجهاز
-            </h3>
-          </div>
-          <p className="text-xs text-muted mb-3 leading-relaxed">
-            افتح terminal على جهاز Linux يحتوي على كرت NVIDIA والصق الأمر. يثبت
-            الوكيل والتبعيات ثم يطبع رمز التفعيل وينتظر حتى تعتمده.
-          </p>
-          <CodeBlock
-            language="bash"
-            code={installCmd}
-            copied={copiedKey === "bash"}
-            onCopy={() => handleCopy(installCmd, "bash")}
-          />
-        </>
-      )}
-
-      {/* Approve-the-code note + link to /activate */}
-      {os !== "mac" && (
-        <div className="rounded-xl border border-accent/30 bg-accent-dim/60 p-5 mt-6 mb-5">
-          <div className="flex items-start gap-3">
-            <div className="h-6 w-6 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs flex-shrink-0 font-bold">
-              2
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-foreground mb-1.5">
-                اعتمد الرمز من المتصفح
-              </div>
-              <div className="text-xs text-muted-hi leading-relaxed mb-3">
-                بعد تشغيل الأمر سيطبع الوكيل رمزا من ثمانية أحرف (مثل{" "}
-                <span className="font-mono text-foreground" dir="ltr">
-                  ABCD-EFGH
-                </span>
-                ). افتح صفحة التفعيل، سجل دخولك بنفس حسابك، وأدخل الرمز.
-              </div>
-              <a
-                href="/activate"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent hover:bg-accent-hi px-3.5 py-2 text-xs font-semibold text-white transition-colors"
-              >
-                <span>فتح صفحة التفعيل</span>
-                <span aria-hidden>↗</span>
-              </a>
-            </div>
-          </div>
         </div>
       )}
-
-      {os !== "mac" && (
-        <div className="rounded-xl border border-border bg-surface p-5 mb-8">
-          <div className="text-sm font-semibold text-foreground mb-3">
-            متطلبات الجهاز
-          </div>
-          <ul className="space-y-2 text-xs text-muted-hi">
-            <li className="flex items-start gap-2">
-              <span className="text-accent mt-0.5">✓</span>
-              <span>كرت شاشة NVIDIA مع تعريفات محدثة (CUDA 12 أو أحدث).</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-accent mt-0.5">✓</span>
-              <span>
-                المثبت يضيف Docker و{" "}
-                <span className="font-mono" dir="ltr">
-                  nvidia-container-toolkit
-                </span>{" "}
-                تلقائيا إن لم يكونا موجودين.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-accent mt-0.5">✓</span>
-              <span>اتصال إنترنت خارج فقط (لا يتطلب فتح بورت).</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-accent mt-0.5">✓</span>
-              <span>نظام Linux (أصلي) أو Windows مع WSL2.</span>
-            </li>
-          </ul>
-        </div>
-      )}
-
-      <button
-        onClick={onBack}
-        className="w-full rounded-lg bg-accent hover:bg-accent-hi px-4 py-3 text-sm font-semibold text-white transition-colors"
-      >
-        {os === "mac" ? "العودة إلى قائمة أجهزتي" : "تم — العودة إلى أجهزتي"}
-      </button>
     </div>
   );
 }
