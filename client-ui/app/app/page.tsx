@@ -1781,14 +1781,11 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
             متطلبات التشغيل على Windows
           </div>
 
-          <ol className="space-y-7 list-none p-0">
+          <ol className="space-y-8 list-none p-0">
             <li>
-              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-baseline gap-2">
-                <span
-                  dir="ltr"
-                  className="text-accent tabular-nums font-semibold"
-                >
-                  1.
+              <h3 className="text-base font-semibold text-foreground mb-2.5 flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-ink text-xs font-bold tabular-nums shrink-0">
+                  1
                 </span>
                 <span>
                   تثبيت{" "}
@@ -1817,12 +1814,9 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
             </li>
 
             <li>
-              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-baseline gap-2">
-                <span
-                  dir="ltr"
-                  className="text-accent tabular-nums font-semibold"
-                >
-                  2.
+              <h3 className="text-base font-semibold text-foreground mb-2.5 flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-ink text-xs font-bold tabular-nums shrink-0">
+                  2
                 </span>
                 <span>
                   تشغيل أمر التثبيت داخل{" "}
