@@ -53,8 +53,8 @@ function sidebarSection(p: Phase): "rent" | "host" | "cli" | null {
 }
 
 function streamColor(s: "stdout" | "stderr" | "system"): string {
-  if (s === "stdout") return "text-zinc-100";
-  if (s === "stderr") return "text-amber-300";
+  if (s === "stdout") return "text-foreground";
+  if (s === "stderr") return "text-amber-800";
   return "text-sky-400";
 }
 
@@ -75,7 +75,7 @@ function translateStatus(s: string): string {
 }
 
 function timeAgoAr(iso: string | null): string {
-  if (!iso) return "لم يتّصل بعد";
+  if (!iso) return "لم يتصل بعد";
   const delta = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
   if (delta < 10) return "الآن";
   if (delta < 60) return `قبل ${delta} ثانية`;
@@ -138,7 +138,7 @@ export default function Home() {
   }, [onAuthenticated]);
 
   return (
-    <div className="min-h-screen bg-[#050507] text-zinc-100">
+    <div className="min-h-screen bg-background text-foreground">
       <BackgroundGrain />
       <Header phase={phase} user={user} onLogout={logout} />
 
@@ -295,41 +295,41 @@ function Header({
           : "";
 
   return (
-    <header className="relative border-b border-zinc-900 bg-[#050507]/90 backdrop-blur-sm sticky top-0 z-10">
+    <header className="relative border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-black text-sm">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent to-cat-amber flex items-center justify-center font-bold text-black text-sm">
               ش
             </div>
             <div className="leading-tight">
               <div className="text-base font-bold tracking-tight">
-                شبكة <span className="text-emerald-400">GPU</span>
+                شبكة <span className="text-accent">GPU</span>
               </div>
-              <div className="text-[10px] text-zinc-500 tracking-wide">
+              <div className="text-[10px] text-muted tracking-wide">
                 شبكة خفيفة · أجهزتك · تحت سيطرتك
               </div>
             </div>
           </div>
           {sectionLabel && (
             <>
-              <span className="text-zinc-800">|</span>
-              <div className="text-sm text-zinc-300">{sectionLabel}</div>
+              <span className="text-muted">|</span>
+              <div className="text-sm text-muted-hi">{sectionLabel}</div>
             </>
           )}
         </div>
         {user && (
           <div className="flex items-center gap-3">
             <div className="text-right leading-tight">
-              <div className="text-xs text-zinc-300">{handleFromEmail(user.email)}</div>
-              <div className="text-[10px] text-zinc-600" dir="ltr">{user.email}</div>
-              <div className="text-[10px] text-emerald-400 tabular-nums" dir="ltr">
+              <div className="text-xs text-muted-hi">{handleFromEmail(user.email)}</div>
+              <div className="text-[10px] text-muted" dir="ltr">{user.email}</div>
+              <div className="text-[10px] text-accent tabular-nums" dir="ltr">
                 {user.credits_gpu_hours} GPU-ساعة
               </div>
             </div>
             <button
               onClick={onLogout}
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="text-xs text-muted hover:text-muted-hi transition-colors"
             >
               تسجيل الخروج
             </button>
@@ -364,7 +364,7 @@ function Sidebar({
     {
       section: "rent" as const,
       label: "استئجار GPU",
-      hint: "شغّل مهامك على جهاز شخص آخر",
+      hint: "شغل مهامك على جهاز شخص آخر",
       icon: "⚡",
       target: "rent_browse" as Phase,
     },
@@ -380,7 +380,7 @@ function Sidebar({
   return (
     <aside className="w-64 flex-shrink-0">
       <div className="sticky top-24">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 space-y-1">
+        <div className="rounded-xl border border-border bg-surface p-3 space-y-1">
           {items.map((it) => {
             const active = sec === it.section;
             return (
@@ -389,16 +389,16 @@ function Sidebar({
                 onClick={() => onNavigate(it.target)}
                 className={`w-full text-right rounded-lg p-3 transition-colors group ${
                   active
-                    ? "bg-emerald-500/10 border border-emerald-500/30"
-                    : "hover:bg-zinc-800/60 border border-transparent"
+                    ? "bg-accent-dim border border-accent/30"
+                    : "hover:bg-surface-hi border border-transparent"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <div
                     className={`h-7 w-7 rounded-md flex items-center justify-center text-sm flex-shrink-0 ${
                       active
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : "bg-zinc-800 text-zinc-400 group-hover:text-zinc-200"
+                        ? "bg-accent-dim text-accent"
+                        : "bg-surface-hi text-muted-hi group-hover:text-foreground"
                     }`}
                   >
                     {it.icon}
@@ -406,12 +406,12 @@ function Sidebar({
                   <div className="flex-1 min-w-0">
                     <div
                       className={`text-sm font-medium ${
-                        active ? "text-emerald-300" : "text-zinc-200"
+                        active ? "text-accent" : "text-foreground"
                       }`}
                     >
                       {it.label}
                     </div>
-                    <div className="text-[11px] text-zinc-500 mt-0.5 leading-tight">
+                    <div className="text-[11px] text-muted mt-0.5 leading-tight">
                       {it.hint}
                     </div>
                   </div>
@@ -422,22 +422,22 @@ function Sidebar({
         </div>
 
         {/* small stats panel at the bottom */}
-        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/20 p-4">
-          <div className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">
+        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+          <div className="text-[11px] text-muted uppercase tracking-wide mb-2">
             حالة شبكتك
           </div>
           <div className="space-y-2 text-xs">
             <div className="flex justify-between">
-              <span className="text-zinc-400">أجهزتي المتصلة</span>
-              <span className="text-emerald-400 font-semibold">2 / 2</span>
+              <span className="text-muted-hi">أجهزتي المتصلة</span>
+              <span className="text-accent font-semibold">2 / 2</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">أجهزة متاحة للتأجير</span>
-              <span className="text-zinc-200 font-semibold">4</span>
+              <span className="text-muted-hi">أجهزة متاحة للتأجير</span>
+              <span className="text-foreground font-semibold">4</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">ساعات GPU مُجمَّعة</span>
-              <span className="text-zinc-200 font-semibold tabular-nums">15</span>
+              <span className="text-muted-hi">ساعات GPU مجمعة</span>
+              <span className="text-foreground font-semibold tabular-nums">15</span>
             </div>
           </div>
         </div>
@@ -452,14 +452,14 @@ function Sidebar({
 
 function Footer() {
   return (
-    <footer className="mt-16 border-t border-zinc-900 py-6">
-      <div className="mx-auto max-w-7xl px-6 flex items-center justify-between text-[11px] text-zinc-600">
+    <footer className="mt-16 border-t border-border py-6">
+      <div className="mx-auto max-w-7xl px-6 flex items-center justify-between text-[11px] text-muted">
         <div>
-          شبكة GPU — خفيفة، موحّدة، تحت سيطرتك. <span className="text-zinc-700">v1</span>
+          شبكة GPU — خفيفة، موحدة، تحت سيطرتك. <span className="text-muted">v1</span>
         </div>
         <div className="flex gap-4">
           <span>الرياض · السعودية</span>
-          <span className="text-zinc-800">·</span>
+          <span className="text-muted">·</span>
           <span>جميع الأجهزة تحت ملكية المستخدم</span>
         </div>
       </div>
@@ -476,8 +476,8 @@ function LoadingView() {
     <main className="relative mx-auto max-w-6xl px-6 py-10">
       <div className="flex items-center justify-center mt-24">
         <div className="text-center">
-          <div className="h-10 w-10 border-4 border-zinc-800 border-t-emerald-400 rounded-full mx-auto animate-spin" />
-          <p className="mt-4 text-xs text-zinc-500">جاري التحقّق من جلستك...</p>
+          <div className="h-10 w-10 border-4 border-border border-t-accent rounded-full mx-auto animate-spin" />
+          <p className="mt-4 text-xs text-muted">جاري التحقق من جلستك...</p>
         </div>
       </div>
     </main>
@@ -492,22 +492,22 @@ function PendingApprovalView({ user }: { user: UserResponse }) {
           ⏳
         </div>
         <h1 className="text-2xl font-bold tracking-tight mb-2">حسابك قيد المراجعة</h1>
-        <p className="text-sm text-zinc-400 leading-relaxed mb-5">
+        <p className="text-sm text-muted-hi leading-relaxed mb-5">
           تم إنشاء حسابك بنجاح وهو الآن في انتظار موافقة المشرف على الشبكة.
-          ستتمكّن من استئجار أو استضافة GPU بمجرد تفعيل الحساب.
+          ستتمكن من استئجار أو استضافة GPU بمجرد تفعيل الحساب.
         </p>
-        <div className="rounded-md bg-black/40 border border-zinc-800 p-3 text-xs text-zinc-500 space-y-1">
+        <div className="rounded-md bg-surface-hi/40 border border-border p-3 text-xs text-muted space-y-1">
           <div className="flex justify-between">
-            <span>البريد المسجّل:</span>
-            <span className="text-zinc-300 font-mono" dir="ltr">{user.email}</span>
+            <span>البريد المسجل:</span>
+            <span className="text-muted-hi font-mono" dir="ltr">{user.email}</span>
           </div>
           <div className="flex justify-between">
             <span>الحالة:</span>
-            <span className="text-amber-300">{user.status === "suspended" ? "موقوف" : "بانتظار الموافقة"}</span>
+            <span className="text-amber-800">{user.status === "suspended" ? "موقوف" : "بانتظار الموافقة"}</span>
           </div>
         </div>
-        <p className="mt-5 text-[11px] text-zinc-600">
-          عند التفعيل، أعد تحميل الصفحة وسيظهر لك الاستئجار والاستضافة تلقائياً.
+        <p className="mt-5 text-[11px] text-muted">
+          عند التفعيل، أعد تحميل الصفحة وسيظهر لك الاستئجار والاستضافة تلقائيا.
         </p>
       </div>
     </div>
@@ -547,7 +547,7 @@ function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
       onSuccess(me);
     } catch (err) {
       const e = err as ApiError;
-      setError(e?.detail || "حدث خطأ — حاول مرّة أخرى");
+      setError(e?.detail || "حدث خطأ — حاول مرة أخرى");
       setBusy(false);
     }
   }
@@ -562,28 +562,28 @@ function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
       : "دخول ←";
   const subtitle =
     mode === "signup"
-      ? "سجّل لتبدأ في تأجير أو استضافة GPU من خلال الشبكة."
+      ? "سجل لتبدأ في تأجير أو استضافة GPU من خلال الشبكة."
       : "استخدم حسابك للوصول إلى أجهزتك ولبدء استئجار GPU من الشبكة.";
 
   return (
     <div className="max-w-md mx-auto mt-12">
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold tracking-tight leading-tight mb-3">
-          شبكتك الخاصة من وحدات <span className="text-emerald-400">GPU</span>
+          شبكتك الخاصة من وحدات <span className="text-accent">GPU</span>
         </h1>
-        <p className="text-sm text-zinc-400 leading-relaxed max-w-sm mx-auto">
-          اربط أجهزتك. شغّل حاوياتك. راقب النتائج.
+        <p className="text-sm text-muted-hi leading-relaxed max-w-sm mx-auto">
+          اربط أجهزتك. شغل حاوياتك. راقب النتائج.
           <br />
-          <span className="text-zinc-500">لا سحابة. لا وسطاء. فقط شبكتك.</span>
+          <span className="text-muted">لا سحابة. لا وسطاء. فقط شبكتك.</span>
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-7 shadow-lg">
-        <h2 className="text-lg font-semibold text-zinc-100 mb-1">{heading}</h2>
-        <p className="text-xs text-zinc-500 mb-6">{subtitle}</p>
+      <div className="rounded-xl border border-border bg-surface p-7 shadow-lg">
+        <h2 className="text-lg font-semibold text-foreground mb-1">{heading}</h2>
+        <p className="text-xs text-muted mb-6">{subtitle}</p>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-medium text-muted-hi mb-1.5 uppercase tracking-wide">
               البريد الإلكتروني
             </label>
             <input
@@ -593,12 +593,12 @@ function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
               required
               autoFocus
               dir="ltr"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-colors text-start"
+              className="w-full rounded-lg border border-border-hi bg-surface-hi/60 px-4 py-2.5 text-sm text-foreground placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40 transition-colors text-start"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              كلمة المرور {mode === "signup" && <span className="text-zinc-600 normal-case">(8 أحرف أو أكثر)</span>}
+            <label className="block text-xs font-medium text-muted-hi mb-1.5 uppercase tracking-wide">
+              كلمة المرور {mode === "signup" && <span className="text-muted normal-case">(8 أحرف أو أكثر)</span>}
             </label>
             <input
               type="password"
@@ -606,31 +606,31 @@ function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={mode === "signup" ? 8 : 1}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-colors"
+              className="w-full rounded-lg border border-border-hi bg-surface-hi/60 px-4 py-2.5 text-sm text-foreground placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40 transition-colors"
             />
           </div>
           {error && (
-            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300" dir="ltr">
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700" dir="ltr">
               {error}
             </div>
           )}
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hi disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {cta}
           </button>
         </form>
 
-        <div className="mt-5 pt-5 border-t border-zinc-800 text-center text-xs text-zinc-500">
+        <div className="mt-5 pt-5 border-t border-border text-center text-xs text-muted">
           {mode === "login" ? (
             <>
               ليس لديك حساب؟{" "}
               <button
                 type="button"
                 onClick={() => { setMode("signup"); setError(null); }}
-                className="text-emerald-400 hover:text-emerald-300 font-medium"
+                className="text-accent hover:text-accent font-medium"
               >
                 إنشاء حساب جديد
               </button>
@@ -641,7 +641,7 @@ function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
               <button
                 type="button"
                 onClick={() => { setMode("login"); setError(null); }}
-                className="text-emerald-400 hover:text-emerald-300 font-medium"
+                className="text-accent hover:text-accent font-medium"
               >
                 تسجيل الدخول
               </button>
@@ -650,8 +650,8 @@ function LoginView({ onSuccess }: { onSuccess: (user: UserResponse) => void }) {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-zinc-600 mt-6">
-        بالدخول أنت توافق على أن مهامك ستُشغَّل على أجهزة الشبكة المختارة.
+      <p className="text-center text-[11px] text-muted mt-6">
+        بالدخول أنت توافق على أن مهامك ستشغل على أجهزة الشبكة المختارة.
       </p>
     </div>
   );
@@ -671,7 +671,7 @@ function RentBrowseView({ onPick }: { onPick: (g: NodeMarketplace) => void }) {
       setNodes(data);
       setError(null);
     } catch (err) {
-      setError((err as ApiError)?.detail || "تعذّر تحميل السوق");
+      setError((err as ApiError)?.detail || "تعذر تحميل السوق");
     }
   }, []);
 
@@ -687,34 +687,34 @@ function RentBrowseView({ onPick }: { onPick: (g: NodeMarketplace) => void }) {
       <div className="flex items-end justify-between mb-7 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">وحدات GPU متاحة للتأجير</h1>
-          <p className="text-sm text-zinc-400 mt-1.5 max-w-2xl leading-relaxed">
+          <p className="text-sm text-muted-hi mt-1.5 max-w-2xl leading-relaxed">
             هذه قائمة بالـ GPU التي يشاركها أعضاء آخرون في الشبكة. اختر واحدة واستخدمها
-            لتشغيل مهمة تدريب أو استنتاج — تُرسَل المهمة مباشرة إلى جهاز المالك.
+            لتشغيل مهمة تدريب أو استنتاج — ترسل المهمة مباشرة إلى جهاز المالك.
           </p>
         </div>
-        <div className="text-xs text-zinc-500 tabular-nums">
-          <span className="text-emerald-400 font-semibold">{total}</span> متصل الآن
+        <div className="text-xs text-muted tabular-nums">
+          <span className="text-accent font-semibold">{total}</span> متصل الآن
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700">
           {error}
         </div>
       )}
 
       {nodes === null && !error && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
+        <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-muted">
           جاري تحميل السوق...
         </div>
       )}
 
       {nodes !== null && nodes.length === 0 && !error && (
-        <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-10 text-center">
+        <div className="rounded-xl border border-dashed border-border-hi bg-surface/30 p-10 text-center">
           <div className="text-4xl mb-3">🌙</div>
-          <h3 className="text-base font-semibold text-zinc-200 mb-2">لا توجد أجهزة متصلة الآن</h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto leading-relaxed">
-            جميع أجهزة الشبكة في حالة غير متصلة حالياً. انتظر قليلاً، أو شارك جهازك
+          <h3 className="text-base font-semibold text-foreground mb-2">لا توجد أجهزة متصلة الآن</h3>
+          <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
+            جميع أجهزة الشبكة في حالة غير متصلة حاليا. انتظر قليلا، أو شارك جهازك
             الخاص من تبويب «إضافة GPU للتأجير» لتملأ السوق بنفسك.
           </p>
         </div>
@@ -744,33 +744,33 @@ function RentableCard({
     <div
       className={`group relative rounded-xl border p-5 transition-all ${
         available
-          ? "border-zinc-800 bg-zinc-900/50 hover:border-emerald-500/40 hover:bg-zinc-900/70"
-          : "border-zinc-800 bg-zinc-900/30 opacity-70"
+          ? "border-border bg-surface/50 hover:border-accent/40 hover:bg-surface/70"
+          : "border-border bg-surface/30 opacity-70"
       }`}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-500/40 to-violet-500/40 flex items-center justify-center text-[11px] font-bold text-zinc-100 flex-shrink-0">
+            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-500/40 to-violet-500/40 flex items-center justify-center text-[11px] font-bold text-foreground flex-shrink-0">
               {initials}
             </div>
             <div className="min-w-0">
               <div
-                className="font-bold text-zinc-100 text-sm truncate"
+                className="font-bold text-foreground text-sm truncate"
                 dir="ltr"
               >
                 {gpu.host_handle}
               </div>
             </div>
           </div>
-          <div className="text-xs text-zinc-500 font-mono truncate" dir="ltr">
+          <div className="text-xs text-muted font-mono truncate" dir="ltr">
             {gpu.name}
           </div>
         </div>
         <StatusPill status={gpu.status} />
       </div>
 
-      <div className="space-y-2 text-sm border-t border-zinc-800 pt-4">
+      <div className="space-y-2 text-sm border-t border-border pt-4">
         <Row label="كرت الشاشة" value={gpu.gpu_model} mono />
         <Row label="ذاكرة الـ GPU" value={`${gpu.gpu_memory_gb} جيجابايت`} />
         <Row label="عدد وحدات الـ GPU" value={`${gpu.gpu_count}`} />
@@ -780,7 +780,7 @@ function RentableCard({
       <button
         disabled={!available}
         onClick={() => onPick(gpu)}
-        className="mt-5 w-full rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors"
+        className="mt-5 w-full rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white hover:bg-accent-hi disabled:bg-surface-hi disabled:text-muted disabled:cursor-not-allowed transition-colors"
       >
         {available
           ? "استئجار هذا الـ GPU ←"
@@ -803,10 +803,10 @@ function Row({
 }) {
   return (
     <div className="flex justify-between items-baseline">
-      <span className="text-zinc-500 text-xs">{label}</span>
+      <span className="text-muted text-xs">{label}</span>
       <span
         className={`${mono ? "font-mono text-xs" : "text-sm"} ${
-          muted ? "text-zinc-500" : "text-zinc-200"
+          muted ? "text-muted" : "text-foreground"
         }`}
         dir={mono ? "ltr" : undefined}
       >
@@ -818,11 +818,11 @@ function Row({
 
 function StatusPill({ status }: { status: string }) {
   const palette: Record<string, string> = {
-    online: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    offline: "bg-red-500/15 text-red-300 border-red-500/30",
-    draining: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+    online: "bg-accent-dim text-accent border-accent/30",
+    offline: "bg-red-500/15 text-red-700 border-red-500/30",
+    draining: "bg-amber-500/15 text-amber-800 border-amber-500/30",
   };
-  const c = palette[status] ?? "bg-zinc-500/15 text-zinc-300 border-zinc-500/30";
+  const c = palette[status] ?? "bg-surface-hi text-muted-hi border-border-hi";
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${c}`}
@@ -862,7 +862,7 @@ function RentSubmitView({
     e.preventDefault();
     setError(null);
     if (!command.trim()) {
-      setError("الرجاء كتابة الأمر الذي سيُشغَّل داخل الحاوية.");
+      setError("الرجاء كتابة الأمر الذي سيشغل داخل الحاوية.");
       return;
     }
     setBusy(true);
@@ -881,11 +881,11 @@ function RentSubmitView({
     } catch (err) {
       const e = err as ApiError;
       if (e?.status === 402) {
-        setError("رصيدك غير كافٍ لتشغيل هذه المهمة. تواصل مع المشرف لزيادة الرصيد.");
+        setError("رصيدك غير كاف لتشغيل هذه المهمة. تواصل مع المشرف لزيادة الرصيد.");
       } else if (e?.status === 422) {
         setError("صيغة الصورة أو الأمر غير صحيحة. راجع صيغة اسم الصورة (lowercase).");
       } else {
-        setError(e?.detail || "فشل إرسال المهمة — حاول مرّة أخرى");
+        setError(e?.detail || "فشل إرسال المهمة — حاول مرة أخرى");
       }
       setBusy(false);
     }
@@ -895,31 +895,31 @@ function RentSubmitView({
     <div>
       <button
         onClick={onBack}
-        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-6"
+        className="text-xs text-muted hover:text-muted-hi transition-colors mb-6"
       >
         → العودة إلى قائمة الـ GPU
       </button>
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight mb-2">تشغيل حاوية على GPU</h1>
-        <div className="flex items-center gap-3 text-sm text-zinc-400 flex-wrap">
+        <div className="flex items-center gap-3 text-sm text-muted-hi flex-wrap">
           <span>على GPU:</span>
-          <span className="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-emerald-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-2 rounded-md bg-accent-dim border border-accent/20 px-2.5 py-1 text-accent">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             <span dir="ltr">{gpu.host_handle}</span>
           </span>
-          <span className="text-zinc-600">·</span>
+          <span className="text-muted">·</span>
           <span className="font-mono text-xs" dir="ltr">
             {gpu.gpu_model}
           </span>
-          <span className="text-zinc-600">·</span>
+          <span className="text-muted">·</span>
           <span>{gpu.gpu_memory_gb} جيجا</span>
         </div>
       </div>
 
       <form
         onSubmit={submit}
-        className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-7 space-y-6"
+        className="rounded-xl border border-border bg-surface p-7 space-y-6"
       >
         <Field
           label="صورة Docker"
@@ -930,13 +930,13 @@ function RentSubmitView({
             onChange={(e) => setImage(e.target.value)}
             required
             dir="ltr"
-            className="font-mono text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 text-start"
+            className="font-mono text-sm w-full rounded-lg border border-border-hi bg-surface-hi/60 px-3.5 py-2.5 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40 text-start"
           />
         </Field>
 
         <Field
           label="الأمر"
-          hint='سيُلفّ تلقائياً بـ bash -c "..." فيمكنك استخدام &&, ||, pipes, وعدة أسطر.'
+          hint='سيلف تلقائيا بـ bash -c "..." فيمكنك استخدام &&, ||, pipes, وعدة أسطر.'
         >
           <textarea
             value={command}
@@ -945,7 +945,7 @@ function RentSubmitView({
             rows={4}
             dir="ltr"
             placeholder="nvidia-smi"
-            className="font-mono text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 text-start whitespace-pre"
+            className="font-mono text-sm w-full rounded-lg border border-border-hi bg-surface-hi/60 px-3.5 py-2.5 text-foreground placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40 text-start whitespace-pre"
           />
         </Field>
 
@@ -957,28 +957,28 @@ function RentSubmitView({
             value={minutes}
             onChange={(e) => setMinutes(Number(e.target.value))}
             required
-            className="text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+            className="text-sm w-full rounded-lg border border-border-hi bg-surface-hi/60 px-3.5 py-2.5 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40"
           />
         </Field>
 
         <div>
-          <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1.5">
-            الأمر الذي سينفَّذ فعلياً داخل الحاوية
+          <div className="text-xs font-medium text-muted-hi uppercase tracking-wide mb-1.5">
+            الأمر الذي سينفذ فعليا داخل الحاوية
           </div>
           <pre
             dir="ltr"
-            className="rounded-lg border border-zinc-800 bg-black/40 p-3.5 text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre-wrap break-all text-start"
+            className="rounded-lg border border-border bg-surface-hi/40 p-3.5 text-[11px] text-accent font-mono overflow-x-auto whitespace-pre-wrap break-all text-start"
           >
 {`docker run --rm --gpus all ${image} bash -c ${JSON.stringify(command || "")}`}
           </pre>
-          <p className="mt-2 text-[11px] text-zinc-600">
+          <p className="mt-2 text-[11px] text-muted">
             أي مخرجات تريد حفظها يجب أن ترسلها من داخل الحاوية إلى تخزين خارجي (S3,
             GitHub, webhook). لا نحتفظ بأي ملفات بعد خروج الحاوية (ADR-003).
           </p>
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700">
             {error}
           </div>
         )}
@@ -986,7 +986,7 @@ function RentSubmitView({
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-gradient-to-br from-accent to-accent hover:from-accent-hi hover:to-accent-hi px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "جاري الإرسال..." : `🚀 ابدأ التنفيذ على GPU الخاص بـ ${gpu.host_handle}`}
         </button>
@@ -1006,11 +1006,11 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1.5">
+      <label className="block text-xs font-medium text-muted-hi uppercase tracking-wide mb-1.5">
         {label}
       </label>
       {children}
-      {hint && <p className="mt-1.5 text-[11px] text-zinc-600 leading-relaxed">{hint}</p>}
+      {hint && <p className="mt-1.5 text-[11px] text-muted leading-relaxed">{hint}</p>}
     </div>
   );
 }
@@ -1125,14 +1125,14 @@ function RunningView({
 
   const statusPillClass =
     status === "running"
-      ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
+      ? "border-sky-500/30 bg-sky-500/10 text-sky-700"
       : status === "queued"
-        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-800"
         : status === "completed"
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          ? "border-accent/30 bg-accent-dim text-accent"
           : status === "failed"
-            ? "border-red-500/30 bg-red-500/10 text-red-300"
-            : "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+            ? "border-red-500/30 bg-red-500/10 text-red-700"
+            : "border-border-hi bg-surface-hi text-muted-hi";
 
   return (
     <div>
@@ -1141,7 +1141,7 @@ function RunningView({
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">
               المهمة{" "}
-              <span className="font-mono text-zinc-400 text-lg" dir="ltr">
+              <span className="font-mono text-muted-hi text-lg" dir="ltr">
                 #{jobId.slice(0, 8)}
               </span>
             </h1>
@@ -1150,17 +1150,17 @@ function RunningView({
               {translateJobStatus(status)}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-zinc-400 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-muted-hi flex-wrap">
             <span>على GPU:</span>
-            <span className="text-emerald-400 font-medium" dir="ltr">
+            <span className="text-accent font-medium" dir="ltr">
               {gpu.host_handle}
             </span>
-            <span className="text-zinc-600">·</span>
+            <span className="text-muted">·</span>
             <span className="font-mono text-xs" dir="ltr">
               {gpu.gpu_model}
             </span>
-            <span className="text-zinc-600">·</span>
-            <span className="font-mono text-xs text-zinc-500" dir="ltr">
+            <span className="text-muted">·</span>
+            <span className="font-mono text-xs text-muted" dir="ltr">
               {image}
             </span>
           </div>
@@ -1168,41 +1168,41 @@ function RunningView({
         <button
           onClick={doCancel}
           disabled={cancelling || status !== "queued" && status !== "running"}
-          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-1.5 text-xs text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-1.5 text-xs text-red-700 hover:bg-red-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {cancelling ? "جاري الإلغاء..." : "إلغاء المهمة"}
         </button>
       </div>
 
       {error && (
-        <div className="mb-5 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+        <div className="mb-5 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700">
           {error}
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 mb-5">
+      <div className="rounded-xl border border-border bg-surface/50 p-6 mb-5">
         <div className="flex items-baseline justify-between mb-3">
-          <div className="text-sm text-zinc-300 font-medium">
+          <div className="text-sm text-muted-hi font-medium">
             {status === "queued"
               ? "المهمة في الانتظار — بانتظار الوكيل ليستلمها..."
               : status === "running"
                 ? "المهمة تعمل على جهاز المضيف"
                 : `الحالة: ${translateJobStatus(status)}`}
           </div>
-          <div className="text-xs tabular-nums text-zinc-500" dir="ltr">
+          <div className="text-xs tabular-nums text-muted" dir="ltr">
             {elapsed > 0 ? `${elapsed.toFixed(1)}s` : ""}
           </div>
         </div>
-        <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
+        <div className="h-2.5 rounded-full bg-surface-hi overflow-hidden">
           <div
             className={`h-full ${
               status === "running"
-                ? "bg-gradient-to-l from-emerald-400 via-emerald-500 to-cyan-500 animate-pulse w-full"
+                ? "bg-gradient-to-l from-accent-hi via-accent to-cat-amber animate-pulse w-full"
                 : status === "completed"
-                  ? "bg-emerald-500 w-full"
+                  ? "bg-accent w-full"
                   : status === "failed" || status === "cancelled"
                     ? "bg-red-500 w-full"
-                    : "bg-zinc-700 w-1/6"
+                    : "bg-surface-hi w-1/6"
             }`}
           />
         </div>
@@ -1247,14 +1247,14 @@ function HighlightCard({
   tone: HighlightTone;
 }) {
   const toneClass = {
-    ok: "text-emerald-400",
+    ok: "text-accent",
     info: "text-sky-400",
-    err: "text-red-400",
-    muted: "text-zinc-400",
+    err: "text-red-700",
+    muted: "text-muted-hi",
   }[tone];
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-      <div className="text-[11px] text-zinc-500 uppercase tracking-wide mb-1">{label}</div>
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="text-[11px] text-muted uppercase tracking-wide mb-1">{label}</div>
       <div className={`text-xl font-mono font-semibold ${toneClass}`} dir="ltr">
         {value}
       </div>
@@ -1278,13 +1278,13 @@ function LogPanel({
   refProp?: React.RefObject<HTMLDivElement | null>;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-black/50 flex flex-col overflow-hidden">
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/40">
+    <div className="terminal flex flex-col overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div>
-          <div className="text-sm font-semibold text-zinc-100">{title}</div>
-          <div className="text-[11px] text-zinc-500 mt-0.5">{subtitle}</div>
+          <div className="text-sm font-semibold text-foreground">{title}</div>
+          <div className="text-[11px] text-muted mt-0.5">{subtitle}</div>
         </div>
-        <span className="text-[11px] text-zinc-600 tabular-nums" dir="ltr">
+        <span className="text-[11px] text-muted tabular-nums" dir="ltr">
           {logs.length} سطر
         </span>
       </div>
@@ -1294,7 +1294,7 @@ function LogPanel({
         className="flex-1 overflow-y-auto p-3 font-mono text-[11px] leading-relaxed text-start"
       >
         {logs.length === 0 ? (
-          <div className="text-zinc-600 text-xs" dir="rtl">
+          <div className="text-muted text-xs" dir="rtl">
             {emptyHint}
           </div>
         ) : (
@@ -1303,7 +1303,7 @@ function LogPanel({
               {tintSystem && l.stream === "system" && (
                 <span className="text-sky-500/70 me-2">▸</span>
               )}
-              <span className="text-zinc-600 me-2 tabular-nums">
+              <span className="text-muted me-2 tabular-nums">
                 {String(i).padStart(3, "0")}
               </span>
               {l.content}
@@ -1338,16 +1338,16 @@ function DoneView({
   useEffect(() => {
     apiFetch<JobPublic>(`/api/jobs/${jobId}`)
       .then(setJob)
-      .catch((err) => setError((err as ApiError)?.detail || "تعذّر تحميل تفاصيل المهمة"));
+      .catch((err) => setError((err as ApiError)?.detail || "تعذر تحميل تفاصيل المهمة"));
   }, [jobId]);
 
   if (error) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-        <p className="text-sm text-red-300 mb-4">{error}</p>
+        <p className="text-sm text-red-700 mb-4">{error}</p>
         <button
           onClick={onHome}
-          className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm text-zinc-200"
+          className="rounded-lg bg-surface-hi hover:bg-surface-hi px-4 py-2 text-sm text-foreground"
         >
           العودة إلى قائمة الـ GPU
         </button>
@@ -1357,8 +1357,8 @@ function DoneView({
 
   if (!job) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
-        جاري تحميل ملخّص المهمة...
+      <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-muted">
+        جاري تحميل ملخص المهمة...
       </div>
     );
   }
@@ -1370,15 +1370,15 @@ function DoneView({
       : null;
 
   const headlineClass = success
-    ? "bg-emerald-500/15 border-emerald-500/40"
+    ? "bg-accent-dim border-accent/40"
     : job.status === "cancelled"
-      ? "bg-zinc-500/15 border-zinc-500/40"
+      ? "bg-surface-hi border-border-hi"
       : "bg-red-500/15 border-red-500/40";
   const headlineIconClass = success
-    ? "text-emerald-400"
+    ? "text-accent"
     : job.status === "cancelled"
-      ? "text-zinc-300"
-      : "text-red-400";
+      ? "text-muted-hi"
+      : "text-red-700";
   const headline = success
     ? "اكتملت المهمة بنجاح"
     : job.status === "cancelled"
@@ -1405,17 +1405,17 @@ function DoneView({
           )}
         </div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">{headline}</h1>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-muted-hi">
           تم التنفيذ على GPU التابع لـ{" "}
-          <span className="text-emerald-400 font-mono" dir="ltr">
+          <span className="text-accent font-mono" dir="ltr">
             {gpu.host_handle}
           </span>
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 mb-5">
-        <div className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-4">
-          ملخّص المهمة
+      <div className="rounded-xl border border-border bg-surface p-6 mb-5">
+        <div className="text-xs font-medium text-muted uppercase tracking-wide mb-4">
+          ملخص المهمة
         </div>
         <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
           <SummaryRow label="رقم المهمة" value={`#${jobId.slice(0, 8)}`} mono />
@@ -1439,23 +1439,23 @@ function DoneView({
       </div>
 
       {job.error_message && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 mb-5">
-          <div className="text-sm font-medium text-red-200 mb-2">رسالة الخطأ</div>
-          <pre className="text-xs text-red-300/90 font-mono whitespace-pre-wrap break-all" dir="ltr">
+        <div className="rounded-xl border border-danger/30 bg-danger/5 p-5 mb-5">
+          <div className="text-sm font-medium text-danger mb-2">رسالة الخطأ</div>
+          <pre className="text-xs text-danger font-mono whitespace-pre-wrap break-all" dir="ltr">
             {job.error_message}
           </pre>
         </div>
       )}
 
       {success && (
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 mb-8">
+        <div className="rounded-xl border border-accent/20 bg-accent-dim p-5 mb-8">
           <div className="flex items-start gap-3">
-            <div className="h-6 w-6 rounded bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs flex-shrink-0">
+            <div className="h-6 w-6 rounded bg-accent-dim text-accent flex items-center justify-center text-xs flex-shrink-0">
               ✓
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-emerald-200">خرجت الحاوية برمز 0</div>
-              <div className="text-xs text-emerald-400/80 mt-1.5 leading-relaxed">
+              <div className="text-sm font-medium text-accent">خرجت الحاوية برمز 0</div>
+              <div className="text-xs text-accent/80 mt-1.5 leading-relaxed">
                 أي ناتج أردت حفظه يجب أن تكون قد رفعته داخل الحاوية إلى تخزين خارجي
                 (S3, GitHub, webhook). لا نحتفظ بأي ملفات بعد خروج الحاوية.
               </div>
@@ -1467,13 +1467,13 @@ function DoneView({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onAgain}
-          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition-colors"
+          className="rounded-lg bg-accent hover:bg-accent-hi px-4 py-3 text-sm font-semibold text-white transition-colors"
         >
           تشغيل مهمة جديدة على نفس الـ GPU
         </button>
         <button
           onClick={onHome}
-          className="rounded-lg border border-zinc-700 bg-zinc-900/40 hover:bg-zinc-900/70 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors"
+          className="rounded-lg border border-border-hi bg-surface hover:bg-surface/70 px-4 py-3 text-sm font-medium text-muted-hi transition-colors"
         >
           العودة إلى قائمة الـ GPU
         </button>
@@ -1495,15 +1495,15 @@ function SummaryRow({
 }) {
   const toneClass = tone
     ? {
-        ok: "text-emerald-400",
+        ok: "text-accent",
         info: "text-sky-400",
-        err: "text-red-400",
-        muted: "text-zinc-400",
+        err: "text-red-700",
+        muted: "text-muted-hi",
       }[tone]
-    : "text-zinc-100";
+    : "text-foreground";
   return (
-    <div className="flex justify-between items-baseline border-b border-zinc-800/60 pb-2">
-      <span className="text-zinc-500 text-xs">{label}</span>
+    <div className="flex justify-between items-baseline border-b border-border/60 pb-2">
+      <span className="text-muted text-xs">{label}</span>
       <span
         className={`${mono ? "font-mono text-xs" : "text-sm"} ${toneClass}`}
         dir={mono ? "ltr" : undefined}
@@ -1528,7 +1528,7 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
       setNodes(data);
       setError(null);
     } catch (err) {
-      setError((err as ApiError)?.detail || "تعذّر تحميل قائمة أجهزتك");
+      setError((err as ApiError)?.detail || "تعذر تحميل قائمة أجهزتك");
     }
   }, []);
 
@@ -1546,14 +1546,14 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
       <div className="flex items-end justify-between mb-7 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">أجهزة GPU الخاصة بي</h1>
-          <p className="text-sm text-zinc-400 mt-1.5 max-w-2xl leading-relaxed">
-            هذه هي الأجهزة التي سجّلتها في الشبكة وأتحتها للتأجير لأعضاء آخرين. كل جهاز
-            يعمل كعقدة GPU خفيفة — يتصل بالشبكة، يستقبل المهام، وينفّذها محلياً.
+          <p className="text-sm text-muted-hi mt-1.5 max-w-2xl leading-relaxed">
+            هذه هي الأجهزة التي سجلتها في الشبكة وأتحتها للتأجير لأعضاء آخرين. كل جهاز
+            يعمل كمعالج GPU خفيف — يتصل بالشبكة، يستقبل المهام، وينفذها محليا.
           </p>
         </div>
         <button
           onClick={onAddNew}
-          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+          className="rounded-lg bg-accent hover:bg-accent-hi px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-lg shadow-accent/20 flex items-center gap-2"
         >
           <span className="text-lg">+</span>
           <span>إضافة GPU جديد</span>
@@ -1575,28 +1575,28 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700">
           {error}
         </div>
       )}
 
       {nodes === null && !error && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
+        <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-muted">
           جاري تحميل قائمة أجهزتك...
         </div>
       )}
 
       {nodes !== null && nodes.length === 0 && !error && (
-        <div className="rounded-xl border border-dashed border-emerald-500/20 bg-emerald-500/5 p-10 text-center">
+        <div className="rounded-xl border border-dashed border-accent/20 bg-accent-dim p-10 text-center">
           <div className="text-4xl mb-3">🖥️</div>
-          <h3 className="text-base font-semibold text-zinc-100 mb-2">لم تضف أي جهاز بعد</h3>
-          <p className="text-xs text-zinc-400 mb-5 max-w-sm mx-auto leading-relaxed">
-            اضغط «إضافة GPU جديد» لتوليد رمز تسجيل وتشغيل الوكيل على جهازك. لا نخزّن أي
+          <h3 className="text-base font-semibold text-foreground mb-2">لم تضف أي جهاز بعد</h3>
+          <p className="text-xs text-muted-hi mb-5 max-w-sm mx-auto leading-relaxed">
+            اضغط «إضافة GPU جديد» لتوليد رمز تسجيل وتشغيل الوكيل على جهازك. لا نخزن أي
             بيانات على الجهاز — فقط يتصل بالشبكة عند الحاجة.
           </p>
           <button
             onClick={onAddNew}
-            className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
+            className="rounded-lg bg-accent hover:bg-accent-hi px-4 py-2 text-sm font-semibold text-white transition-colors"
           >
             إضافة GPU جديد ←
           </button>
@@ -1611,17 +1611,17 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
         </div>
       )}
 
-      <div className="mt-8 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/20 p-5 flex items-start gap-4">
-        <div className="h-9 w-9 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg flex-shrink-0">
+      <div className="mt-8 rounded-xl border border-dashed border-border bg-surface p-5 flex items-start gap-4">
+        <div className="h-9 w-9 rounded-md bg-accent-dim text-accent flex items-center justify-center text-lg flex-shrink-0">
           💡
         </div>
         <div className="flex-1">
-          <div className="text-sm text-zinc-300 font-medium">
-            فكرة: أضف جهازاً جديداً إلى شبكتك
+          <div className="text-sm text-muted-hi font-medium">
+            فكرة: أضف جهازا جديدا إلى شبكتك
           </div>
-          <div className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+          <div className="text-xs text-muted mt-1.5 leading-relaxed">
             يمكنك إضافة أي جهاز يحتوي على كرت شاشة NVIDIA — لابتوبك، حاسوبك المنزلي،
-            أو جهاز في عملك. اضغط <span className="text-emerald-400">«إضافة GPU جديد»</span>{" "}
+            أو جهاز في عملك. اضغط <span className="text-accent">«إضافة GPU جديد»</span>{" "}
             لتوليد رمز التسجيل وأمر التشغيل.
           </div>
         </div>
@@ -1632,33 +1632,33 @@ function MyGpusView({ onAddNew }: { onAddNew: () => void }) {
 
 function MyGpuRow({ node }: { node: NodePublic }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 flex items-center gap-5">
-      <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 flex items-center justify-center text-xl flex-shrink-0">
+    <div className="rounded-xl border border-border bg-surface/50 p-5 flex items-center gap-5">
+      <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-accent/30 to-cat-amber/30 flex items-center justify-center text-xl flex-shrink-0">
         🖥️
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2.5 mb-1">
-          <h3 className="font-bold text-zinc-100 text-base">{node.name}</h3>
+          <h3 className="font-bold text-foreground text-base">{node.name}</h3>
           <StatusPill status={node.status} />
         </div>
-        <div className="flex gap-5 text-xs text-zinc-400 flex-wrap mt-2">
+        <div className="flex gap-5 text-xs text-muted-hi flex-wrap mt-2">
           <span>
-            <span className="text-zinc-600">كرت: </span>
-            <span className="font-mono text-zinc-300" dir="ltr">
+            <span className="text-muted">كرت: </span>
+            <span className="font-mono text-muted-hi" dir="ltr">
               {node.gpu_model}
             </span>
           </span>
           <span>
-            <span className="text-zinc-600">ذاكرة: </span>
-            <span className="text-zinc-300">{node.gpu_memory_gb} جيجا</span>
+            <span className="text-muted">ذاكرة: </span>
+            <span className="text-muted-hi">{node.gpu_memory_gb} جيجا</span>
           </span>
           <span>
-            <span className="text-zinc-600">عدد GPUs: </span>
-            <span className="text-zinc-300">{node.gpu_count}</span>
+            <span className="text-muted">عدد GPUs: </span>
+            <span className="text-muted-hi">{node.gpu_count}</span>
           </span>
           <span>
-            <span className="text-zinc-600">آخر نبضة: </span>
-            <span className="text-zinc-400">{timeAgoAr(node.last_seen_at)}</span>
+            <span className="text-muted">آخر نبضة: </span>
+            <span className="text-muted-hi">{timeAgoAr(node.last_seen_at)}</span>
           </span>
         </div>
       </div>
@@ -1698,10 +1698,10 @@ function AddGpuFormView({
       const e = err as ApiError;
       if (e?.status === 403) {
         setError(
-          "حسابك غير مفعّل لاستضافة GPU. تواصل مع المشرف لتفعيل صلاحية الاستضافة.",
+          "حسابك غير مفعل لاستضافة GPU. تواصل مع المشرف لتفعيل صلاحية الاستضافة.",
         );
       } else {
-        setError(e?.detail || "فشل إنشاء رمز التسجيل — حاول مرّة أخرى");
+        setError(e?.detail || "فشل إنشاء رمز التسجيل — حاول مرة أخرى");
       }
       setBusy(false);
     }
@@ -1711,20 +1711,20 @@ function AddGpuFormView({
     <div className="max-w-2xl">
       <button
         onClick={onBack}
-        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-6"
+        className="text-xs text-muted hover:text-muted-hi transition-colors mb-6"
       >
         → العودة إلى أجهزتي
       </button>
 
       <h1 className="text-2xl font-bold tracking-tight mb-2">إضافة GPU جديد</h1>
-      <p className="text-sm text-zinc-400 mb-8 max-w-xl leading-relaxed">
-        أعطِ جهازك اسماً مختصراً يساعدك على التعرّف عليه في لوحتك (ولن يراه أحد آخر في
-        الشبكة). بعد الإنشاء سنولّد لك رمز تسجيل وأمر تشغيل تنسخه إلى جهازك.
+      <p className="text-sm text-muted-hi mb-8 max-w-xl leading-relaxed">
+        أعط جهازك اسما مختصرا يساعدك على التعرف عليه في لوحتك (ولن يراه أحد آخر في
+        الشبكة). بعد الإنشاء سنولد لك رمز تسجيل وأمر تشغيل تنسخه إلى جهازك.
       </p>
 
       <form
         onSubmit={submit}
-        className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-7 space-y-6"
+        className="rounded-xl border border-border bg-surface p-7 space-y-6"
       >
         <Field
           label="اسم الـ GPU"
@@ -1735,33 +1735,33 @@ function AddGpuFormView({
             onChange={(e) => setName(e.target.value)}
             required
             autoFocus
-            placeholder="مثلاً: لابتوبي"
-            className="text-sm w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3.5 py-2.5 text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+            placeholder="مثلا: لابتوبي"
+            className="text-sm w-full rounded-lg border border-border-hi bg-surface-hi/60 px-3.5 py-2.5 text-foreground placeholder-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40"
           />
         </Field>
 
-        <div className="rounded-lg border border-zinc-800 bg-black/30 p-4 text-xs text-zinc-400 leading-relaxed space-y-2">
-          <div className="text-zinc-200 font-semibold text-sm mb-1">ماذا سيحدث بعد ذلك؟</div>
+        <div className="rounded-lg border border-border bg-background/30 p-4 text-xs text-muted-hi leading-relaxed space-y-2">
+          <div className="text-foreground font-semibold text-sm mb-1">ماذا سيحدث بعد ذلك؟</div>
           <div className="flex items-start gap-2">
-            <span className="text-emerald-400">1.</span>
-            <span>سنُنشئ لك رمز تسجيل صالح لـ24 ساعة.</span>
+            <span className="text-accent">1.</span>
+            <span>سننشئ لك رمز تسجيل صالح لـ24 ساعة.</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-emerald-400">2.</span>
+            <span className="text-accent">2.</span>
             <span>تقوم بتشغيل أمر بسيط على الجهاز الذي يحتوي على كرت NVIDIA.</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-emerald-400">3.</span>
-            <span>الوكيل (agent) يتصل بالشبكة، ويظهر الجهاز في قائمتك تلقائياً.</span>
+            <span className="text-accent">3.</span>
+            <span>الوكيل (agent) يتصل بالشبكة، ويظهر الجهاز في قائمتك تلقائيا.</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-emerald-400">4.</span>
-            <span>يصبح متاحاً للاستئجار من قبل مستخدمين آخرين.</span>
+            <span className="text-accent">4.</span>
+            <span>يصبح متاحا للاستئجار من قبل مستخدمين آخرين.</span>
           </div>
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 leading-relaxed">
+          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 leading-relaxed">
             {error}
           </div>
         )}
@@ -1769,7 +1769,7 @@ function AddGpuFormView({
         <button
           type="submit"
           disabled={busy || !name.trim()}
-          className="w-full rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-gradient-to-br from-accent to-accent hover:from-accent-hi hover:to-accent-hi px-4 py-3.5 text-sm font-semibold text-white transition-all shadow-lg shadow-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "جاري الإنشاء..." : "إنشاء رمز التسجيل ←"}
         </button>
@@ -1854,20 +1854,20 @@ sudo systemctl enable --now gpu-agent`;
   return (
     <div className="max-w-3xl">
       <div className="mb-7">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300 mb-3">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-dim px-3 py-1 text-[11px] font-medium text-accent mb-3">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
           تم إنشاء رمز التسجيل
         </div>
         <h1 className="text-2xl font-bold tracking-tight mb-2">
-          خطوة واحدة أخيرة: شغّل الأوامر على «{name}»
+          خطوة واحدة أخيرة: شغل الأوامر على «{name}»
         </h1>
-        <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
+        <p className="text-sm text-muted-hi max-w-xl leading-relaxed">
           اختر نظام التشغيل الذي يعمل عليه الجهاز الذي تريد إضافته.
         </p>
       </div>
 
       {/* OS tabs */}
-      <div className="mb-5 inline-flex rounded-lg border border-zinc-800 bg-zinc-900/40 p-1 gap-1">
+      <div className="mb-5 inline-flex rounded-lg border border-border bg-surface p-1 gap-1">
         {([
           ["windows", "Windows"],
           ["linux", "Linux"],
@@ -1878,8 +1878,8 @@ sudo systemctl enable --now gpu-agent`;
             onClick={() => setOs(key)}
             className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
               os === key
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                : "text-zinc-400 hover:text-zinc-200 border border-transparent"
+                ? "bg-accent-dim text-accent border border-accent/30"
+                : "text-muted-hi hover:text-foreground border border-transparent"
             }`}
           >
             {label}
@@ -1890,21 +1890,21 @@ sudo systemctl enable --now gpu-agent`;
       {os === "mac" && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 mb-5">
           <div className="flex items-start gap-4">
-            <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg flex-shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center text-lg flex-shrink-0">
               ⚠
             </div>
             <div className="flex-1">
-              <div className="text-base font-semibold text-amber-100 mb-2">
+              <div className="text-base font-semibold text-amber-900 mb-2">
                 أجهزة ماك لا يمكنها استضافة GPU
               </div>
-              <div className="text-sm text-amber-200/90 leading-relaxed mb-3">
+              <div className="text-sm text-amber-800/90 leading-relaxed mb-3">
                 أجهزة ماك الحديثة تستخدم كروت شاشة من Apple (معالج M1/M2/M3) ولا تحتوي
-                على كرت NVIDIA. منصّتنا تشغّل الحاويات باستخدام{" "}
+                على كرت NVIDIA. منصتنا تشغل الحاويات باستخدام{" "}
                 <span className="font-mono" dir="ltr">docker run --gpus all</span> وهذا
-                يتطلّب كرت NVIDIA تحديداً.
+                يتطلب كرت NVIDIA تحديدا.
               </div>
-              <div className="text-sm text-amber-200/90 leading-relaxed">
-                يمكنك بدلاً من ذلك <span className="font-semibold text-emerald-300">استئجار GPU</span>{" "}
+              <div className="text-sm text-amber-800/90 leading-relaxed">
+                يمكنك بدلا من ذلك <span className="font-semibold text-accent">استئجار GPU</span>{" "}
                 من الأعضاء الآخرين في الشبكة عبر التبويب الأيمن «استئجار GPU».
               </div>
             </div>
@@ -1916,13 +1916,13 @@ sudo systemctl enable --now gpu-agent`;
         <>
           {/* Step 0: WSL install via PowerShell */}
           <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-500/20 text-sky-300 text-[10px] font-bold">0</span>
-            <h3 className="text-sm font-semibold text-zinc-200">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-500/20 text-sky-700 text-[10px] font-bold">0</span>
+            <h3 className="text-sm font-semibold text-foreground">
               تثبيت WSL (مرة واحدة فقط)
             </h3>
           </div>
-          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
-            افتح <span className="font-mono text-zinc-300" dir="ltr">PowerShell</span>{" "}
+          <p className="text-xs text-muted mb-3 leading-relaxed">
+            افتح <span className="font-mono text-muted-hi" dir="ltr">PowerShell</span>{" "}
             كمسؤول (Run as administrator)، ثم انسخ الأمر التالي. سيقوم Windows
             بتحميل Ubuntu وطلب إعادة التشغيل.
           </p>
@@ -1932,20 +1932,20 @@ sudo systemctl enable --now gpu-agent`;
             copied={copiedKey === "ps"}
             onCopy={() => handleCopy(powershellCmd, "ps")}
           />
-          <p className="text-xs text-zinc-500 mt-3 mb-6 leading-relaxed">
-            بعد إعادة التشغيل، ستفتح نافذة Ubuntu تلقائياً وستطلب منك اختيار اسم
+          <p className="text-xs text-muted mt-3 mb-6 leading-relaxed">
+            بعد إعادة التشغيل، ستفتح نافذة Ubuntu تلقائيا وستطلب منك اختيار اسم
             مستخدم وكلمة مرور (للينكس داخل WSL، منفصلة عن حساب Windows). بعدها،
-            انتقل للخطوة التالية <span className="font-bold text-zinc-300">داخل نافذة Ubuntu</span> وليس PowerShell.
+            انتقل للخطوة التالية <span className="font-bold text-muted-hi">داخل نافذة Ubuntu</span> وليس PowerShell.
           </p>
 
           {/* Steps 1-3: bash inside WSL Ubuntu */}
           <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">1-3</span>
-            <h3 className="text-sm font-semibold text-zinc-200">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">1-3</span>
+            <h3 className="text-sm font-semibold text-foreground">
               تثبيت الوكيل داخل Ubuntu
             </h3>
           </div>
-          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+          <p className="text-xs text-muted mb-3 leading-relaxed">
             انسخ والصق الكتلة كاملة داخل نافذة Ubuntu terminal.
           </p>
           <CodeBlock
@@ -1959,11 +1959,11 @@ sudo systemctl enable --now gpu-agent`;
 
       {os === "linux" && (
         <>
-          <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+          <p className="text-xs text-muted mb-3 leading-relaxed">
             افتح terminal على جهاز Linux الذي يحتوي على كرت NVIDIA والصق الكتلة التالية.
-            تأكّد أنّ <span className="font-mono" dir="ltr">docker</span> و{" "}
+            تأكد أن <span className="font-mono" dir="ltr">docker</span> و{" "}
             <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>{" "}
-            مثبَّتان، و <span className="font-mono" dir="ltr">nvidia-smi</span> يعمل.
+            مثبتان، و <span className="font-mono" dir="ltr">nvidia-smi</span> يعمل.
           </p>
           <CodeBlock
             language="bash"
@@ -1978,19 +1978,19 @@ sudo systemctl enable --now gpu-agent`;
       {os !== "mac" && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-5 mt-6">
           <div className="flex items-start gap-3">
-            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs flex-shrink-0 font-bold">
+            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-800 flex items-center justify-center text-xs flex-shrink-0 font-bold">
               !
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-amber-200 mb-1">
-                هذا الرمز يُعرض مرّة واحدة فقط
+              <div className="text-sm font-medium text-amber-800 mb-1">
+                هذا الرمز يعرض مرة واحدة فقط
               </div>
-              <div className="text-xs text-amber-400/80 leading-relaxed mb-3">
-                احفظه الآن. لن نتمكّن من إظهاره لك مرة أخرى. صلاحيته 24 ساعة ويُستخدم مرّة واحدة.
+              <div className="text-xs text-amber-700 leading-relaxed mb-3">
+                احفظه الآن. لن نتمكن من إظهاره لك مرة أخرى. صلاحيته 24 ساعة ويستخدم مرة واحدة.
               </div>
               <code
                 dir="ltr"
-                className="block rounded-md bg-black/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 font-mono text-start break-all"
+                className="block rounded-md bg-surface-hi/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-800 font-mono text-start break-all"
               >
                 {claimTokenStr}
               </code>
@@ -2001,25 +2001,25 @@ sudo systemctl enable --now gpu-agent`;
 
       {/* Requirements — hidden on mac because they don't apply */}
       {os !== "mac" && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 mb-8">
-          <div className="text-sm font-semibold text-zinc-200 mb-3">متطلبات الجهاز</div>
-          <ul className="space-y-2 text-xs text-zinc-400">
+        <div className="rounded-xl border border-border bg-surface p-5 mb-8">
+          <div className="text-sm font-semibold text-foreground mb-3">متطلبات الجهاز</div>
+          <ul className="space-y-2 text-xs text-muted-hi">
             <li className="flex items-start gap-2">
-              <span className="text-emerald-400 mt-0.5">✓</span>
-              <span>كرت شاشة NVIDIA مع تعريفات مُحدَّثة (CUDA 12 أو أحدث).</span>
+              <span className="text-accent mt-0.5">✓</span>
+              <span>كرت شاشة NVIDIA مع تعريفات محدثة (CUDA 12 أو أحدث).</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span className="text-accent mt-0.5">✓</span>
               <span>
-                Docker مثبَّت، مع إضافة <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>.
+                Docker مثبت، مع إضافة <span className="font-mono" dir="ltr">nvidia-container-toolkit</span>.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-emerald-400 mt-0.5">✓</span>
-              <span>اتصال إنترنت خارج فقط (لا يتطلّب فتح بورت — الجهاز يتصل بالشبكة).</span>
+              <span className="text-accent mt-0.5">✓</span>
+              <span>اتصال إنترنت خارج فقط (لا يتطلب فتح بورت — الجهاز يتصل بالشبكة).</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span className="text-accent mt-0.5">✓</span>
               <span>نظام Linux (أصلي) أو Windows مع WSL2.</span>
             </li>
           </ul>
@@ -2028,11 +2028,11 @@ sudo systemctl enable --now gpu-agent`;
 
       <button
         onClick={onDone}
-        className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition-colors"
+        className="w-full rounded-lg bg-accent hover:bg-accent-hi px-4 py-3 text-sm font-semibold text-white transition-colors"
       >
         {os === "mac"
           ? "العودة إلى قائمة أجهزتي"
-          : `حسناً، سيظهر «${name}» في قائمتي بعد التشغيل`}
+          : `حسنا، سيظهر «${name}» في قائمتي بعد التشغيل`}
       </button>
     </div>
   );
@@ -2050,17 +2050,17 @@ function CodeBlock({
   onCopy: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-black/50 overflow-hidden mb-2">
-      <div className="px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
-        <div className="text-xs text-zinc-500 font-mono" dir="ltr">
+    <div className="terminal overflow-hidden mb-2">
+      <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
+        <div className="text-xs text-muted font-mono" dir="ltr">
           {language}
         </div>
         <button
           onClick={onCopy}
           className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${
             copied
-              ? "bg-emerald-500/20 text-emerald-300"
-              : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+              ? "bg-accent-dim text-accent"
+              : "bg-surface-hi text-muted-hi hover:bg-surface-hi"
           }`}
         >
           {copied ? "تم النسخ ✓" : "📋 نسخ"}
@@ -2068,7 +2068,7 @@ function CodeBlock({
       </div>
       <pre
         dir="ltr"
-        className="p-4 text-xs text-emerald-300 font-mono overflow-x-auto text-start leading-relaxed whitespace-pre"
+        className="p-4 text-xs text-accent font-mono overflow-x-auto text-start leading-relaxed whitespace-pre"
       >
         {code}
       </pre>
@@ -2131,23 +2131,23 @@ function CliInstallView() {
     <div className="max-w-3xl">
       <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight mb-2">سطر الأوامر</h1>
-        <p className="text-sm text-zinc-400 leading-relaxed">
+        <p className="text-sm text-muted-hi leading-relaxed">
           استخدم{" "}
-          <span className="font-mono text-emerald-300" dir="ltr">
+          <span className="font-mono text-accent" dir="ltr">
             gpunet
           </span>{" "}
-          من الترمنال لإرسال مهام GPU، تصفّح الشبكة، وإدارة حسابك — بدون الحاجة لفتح
-          المتصفّح.
+          من الترمنال لإرسال مهام GPU، تصفح الشبكة، وإدارة حسابك — بدون الحاجة لفتح
+          المتصفح.
         </p>
       </div>
 
       {/* Step 1: pip install */}
       <div className="mb-3 flex items-center gap-2">
-        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
           1
         </span>
-        <h3 className="text-sm font-semibold text-zinc-200">
-          ثبّت الأداة (يتطلّب Python 3.10+)
+        <h3 className="text-sm font-semibold text-foreground">
+          ثبت الأداة (يتطلب Python 3.10+)
         </h3>
       </div>
       <CodeBlock
@@ -2159,39 +2159,39 @@ function CliInstallView() {
 
       {/* Step 2: generate API key */}
       <div className="mt-6 mb-3 flex items-center gap-2">
-        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
           2
         </span>
-        <h3 className="text-sm font-semibold text-zinc-200">أنشئ مفتاح API</h3>
+        <h3 className="text-sm font-semibold text-foreground">أنشئ مفتاح API</h3>
       </div>
-      <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
-        سيُعرض المفتاح الكامل مرّة واحدة فقط. انسخه فوراً إلى مكان آمن.
+      <p className="text-xs text-muted mb-3 leading-relaxed">
+        سيعرض المفتاح الكامل مرة واحدة فقط. انسخه فورا إلى مكان آمن.
       </p>
 
       {!generatedKey ? (
         <button
           onClick={generateKey}
           disabled={busy}
-          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-lg bg-accent hover:bg-accent-hi px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "جاري الإنشاء..." : "إنشاء مفتاح جديد"}
         </button>
       ) : (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-2">
           <div className="flex items-start gap-3">
-            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs flex-shrink-0 font-bold">
+            <div className="h-6 w-6 rounded bg-amber-500/20 text-amber-800 flex items-center justify-center text-xs flex-shrink-0 font-bold">
               !
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-amber-200 mb-1">
-                هذا المفتاح يُعرض مرّة واحدة فقط
+              <div className="text-sm font-medium text-amber-800 mb-1">
+                هذا المفتاح يعرض مرة واحدة فقط
               </div>
-              <div className="text-xs text-amber-400/80 leading-relaxed mb-3">
-                احفظه الآن. لن نتمكّن من إظهاره لك مرة أخرى.
+              <div className="text-xs text-amber-700 leading-relaxed mb-3">
+                احفظه الآن. لن نتمكن من إظهاره لك مرة أخرى.
               </div>
               <code
                 dir="ltr"
-                className="block rounded-md bg-black/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 font-mono text-start break-all"
+                className="block rounded-md bg-surface-hi/40 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-800 font-mono text-start break-all"
               >
                 {generatedKey}
               </code>
@@ -2201,17 +2201,17 @@ function CliInstallView() {
       )}
 
       {error && (
-        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-700">
           {error}
         </div>
       )}
 
       {/* Step 3: auth set-key */}
       <div className="mt-6 mb-3 flex items-center gap-2">
-        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
           3
         </span>
-        <h3 className="text-sm font-semibold text-zinc-200">اربط الأداة بحسابك</h3>
+        <h3 className="text-sm font-semibold text-foreground">اربط الأداة بحسابك</h3>
       </div>
       <CodeBlock
         language="bash"
@@ -2222,10 +2222,10 @@ function CliInstallView() {
 
       {/* Step 4: verify */}
       <div className="mt-6 mb-3 flex items-center gap-2">
-        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-accent-dim text-accent text-[10px] font-bold">
           4
         </span>
-        <h3 className="text-sm font-semibold text-zinc-200">تحقّق من الاتصال</h3>
+        <h3 className="text-sm font-semibold text-foreground">تحقق من الاتصال</h3>
       </div>
       <CodeBlock
         language="bash"
@@ -2235,16 +2235,16 @@ function CliInstallView() {
       />
 
       {/* Optional: skill install */}
-      <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
-        <div className="text-sm font-semibold text-zinc-200 mb-2">
+      <div className="mt-8 rounded-xl border border-border bg-surface p-5">
+        <div className="text-sm font-semibold text-foreground mb-2">
           للوكلاء البرمجيين (اختياري)
         </div>
-        <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+        <p className="text-xs text-muted mb-3 leading-relaxed">
           إذا كنت تستخدم{" "}
-          <span className="font-mono text-zinc-300" dir="ltr">
+          <span className="font-mono text-muted-hi" dir="ltr">
             Claude Code
           </span>{" "}
-          أو وكيلاً مشابهاً، ثبّت المهارة ليكتشف المنصّة تلقائياً:
+          أو وكيلا مشابها، ثبت المهارة ليكتشف المنصة تلقائيا:
         </p>
         <CodeBlock
           language="bash"
