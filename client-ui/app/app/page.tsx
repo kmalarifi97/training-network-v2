@@ -1771,59 +1771,70 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
         />
       )}
 
-      {/* Windows prerequisites — numbered reference, not a worksheet for the
-         main action. No card background; sits directly on the page. */}
+      {/* Windows prerequisites — numbered reference, not a worksheet for
+         the main action. Number sits in its own flex column so the
+         leading-edge alignment works identically in RTL and LTR. */}
       {os === "windows" && (
         <div className="mt-10">
-          <div className="text-xs font-semibold text-muted-hi uppercase tracking-wider mb-5">
+          <div className="text-xs font-semibold text-muted-hi uppercase tracking-wider mb-6">
             متطلبات التشغيل على Windows
           </div>
 
-          <ol className="space-y-7 list-none">
-            <li>
-              <h3 className="text-sm font-semibold text-foreground mb-1.5">
-                1. تثبيت{" "}
-                <span className="font-mono" dir="ltr">
-                  WSL
-                </span>
-              </h3>
-              <p className="text-xs text-muted leading-relaxed mb-3 max-w-lg">
-                في حال لم يكن{" "}
-                <span className="font-mono" dir="ltr">
-                  WSL
-                </span>{" "}
-                مثبتا على الجهاز، نفذ الأمر التالي في{" "}
-                <span className="font-mono" dir="ltr">
-                  PowerShell
-                </span>{" "}
-                بصلاحيات المسؤول.
-              </p>
-              <CodeBlock
-                language="powershell"
-                code={powershellCmd}
-                copied={copiedKey === "ps"}
-                onCopy={() => handleCopy(powershellCmd, "ps")}
-              />
+          <ol className="space-y-7 list-none p-0">
+            <li className="flex items-start gap-4">
+              <span className="shrink-0 mt-0.5 w-6 text-sm font-semibold text-accent tabular-nums">
+                1.
+              </span>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground mb-1.5">
+                  تثبيت{" "}
+                  <span className="font-mono" dir="ltr">
+                    WSL
+                  </span>
+                </h3>
+                <p className="text-xs text-muted leading-relaxed mb-3 max-w-lg">
+                  في حال لم يكن{" "}
+                  <span className="font-mono" dir="ltr">
+                    WSL
+                  </span>{" "}
+                  مثبتا على الجهاز، نفذ الأمر التالي في{" "}
+                  <span className="font-mono" dir="ltr">
+                    PowerShell
+                  </span>{" "}
+                  بصلاحيات المسؤول.
+                </p>
+                <CodeBlock
+                  language="powershell"
+                  code={powershellCmd}
+                  copied={copiedKey === "ps"}
+                  onCopy={() => handleCopy(powershellCmd, "ps")}
+                />
+              </div>
             </li>
 
-            <li>
-              <h3 className="text-sm font-semibold text-foreground mb-1.5">
-                2. تشغيل أمر التثبيت داخل{" "}
-                <span className="font-mono" dir="ltr">
-                  Ubuntu
-                </span>
-              </h3>
-              <p className="text-xs text-muted leading-relaxed max-w-lg">
-                بعد اكتمال تثبيت{" "}
-                <span className="font-mono" dir="ltr">
-                  WSL
-                </span>
-                ، افتح نافذة{" "}
-                <span className="font-mono" dir="ltr">
-                  Ubuntu
-                </span>{" "}
-                ونفذ أمر التثبيت الذي في الأعلى.
-              </p>
+            <li className="flex items-start gap-4">
+              <span className="shrink-0 mt-0.5 w-6 text-sm font-semibold text-accent tabular-nums">
+                2.
+              </span>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground mb-1.5">
+                  تشغيل أمر التثبيت داخل{" "}
+                  <span className="font-mono" dir="ltr">
+                    Ubuntu
+                  </span>
+                </h3>
+                <p className="text-xs text-muted leading-relaxed max-w-lg">
+                  بعد اكتمال تثبيت{" "}
+                  <span className="font-mono" dir="ltr">
+                    WSL
+                  </span>
+                  ، افتح نافذة{" "}
+                  <span className="font-mono" dir="ltr">
+                    Ubuntu
+                  </span>{" "}
+                  ونفذ أمر التثبيت الذي في الأعلى.
+                </p>
+              </div>
             </li>
           </ol>
         </div>
