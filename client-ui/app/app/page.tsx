@@ -1771,33 +1771,61 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
         />
       )}
 
-      {/* Windows pre-req: quiet and secondary, not a numbered step. */}
+      {/* Windows prerequisites — numbered reference, not a worksheet for the
+         main action. No card background; sits directly on the page. */}
       {os === "windows" && (
-        <div className="mt-5 rounded-lg border border-border bg-surface/60 p-4">
-          <div className="text-xs text-muted-hi font-medium mb-2">
+        <div className="mt-10">
+          <div className="text-xs font-semibold text-muted-hi uppercase tracking-wider mb-5">
             متطلبات التشغيل على Windows
           </div>
-          <div className="text-[11px] text-muted leading-relaxed mb-2.5">
-            في حال لم يكن{" "}
-            <span className="font-mono" dir="ltr">
-              WSL
-            </span>{" "}
-            مثبتا على الجهاز، نفذ الأمر التالي في{" "}
-            <span className="font-mono" dir="ltr">
-              PowerShell
-            </span>{" "}
-            بصلاحيات المسؤول. بعد اكتمال التثبيت، افتح{" "}
-            <span className="font-mono" dir="ltr">
-              Ubuntu
-            </span>{" "}
-            ونفذ أمر التثبيت أعلاه.
-          </div>
-          <CodeBlock
-            language="powershell"
-            code={powershellCmd}
-            copied={copiedKey === "ps"}
-            onCopy={() => handleCopy(powershellCmd, "ps")}
-          />
+
+          <ol className="space-y-7 list-none">
+            <li>
+              <h3 className="text-sm font-semibold text-foreground mb-1.5">
+                1. تثبيت{" "}
+                <span className="font-mono" dir="ltr">
+                  WSL
+                </span>
+              </h3>
+              <p className="text-xs text-muted leading-relaxed mb-3 max-w-lg">
+                في حال لم يكن{" "}
+                <span className="font-mono" dir="ltr">
+                  WSL
+                </span>{" "}
+                مثبتا على الجهاز، نفذ الأمر التالي في{" "}
+                <span className="font-mono" dir="ltr">
+                  PowerShell
+                </span>{" "}
+                بصلاحيات المسؤول.
+              </p>
+              <CodeBlock
+                language="powershell"
+                code={powershellCmd}
+                copied={copiedKey === "ps"}
+                onCopy={() => handleCopy(powershellCmd, "ps")}
+              />
+            </li>
+
+            <li>
+              <h3 className="text-sm font-semibold text-foreground mb-1.5">
+                2. تشغيل أمر التثبيت داخل{" "}
+                <span className="font-mono" dir="ltr">
+                  Ubuntu
+                </span>
+              </h3>
+              <p className="text-xs text-muted leading-relaxed max-w-lg">
+                بعد اكتمال تثبيت{" "}
+                <span className="font-mono" dir="ltr">
+                  WSL
+                </span>
+                ، افتح نافذة{" "}
+                <span className="font-mono" dir="ltr">
+                  Ubuntu
+                </span>{" "}
+                ونفذ أمر التثبيت الذي في الأعلى.
+              </p>
+            </li>
+          </ol>
         </div>
       )}
     </div>
