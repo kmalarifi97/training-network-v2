@@ -1702,11 +1702,17 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
 
       <h1 className="text-3xl font-bold tracking-tight mb-3">إضافة GPU</h1>
       <p className="text-sm text-muted-hi mb-8 leading-relaxed max-w-lg">
-        الصق الأمر التالي في الترمنال. سيطبع لك رمز اعتماد، أدخله في{" "}
-        <a href="/activate" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hi">
+        نفذ الأمر التالي في الترمنال. سيظهر رمز اعتماد في المخرجات، يتم إدخاله
+        في{" "}
+        <a
+          href="/activate"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent hover:text-accent-hi"
+        >
           صفحة التفعيل
         </a>{" "}
-        وانتهيت.
+        لإكمال التسجيل.
       </p>
 
       {/* OS tabs — subtle, not numbered */}
@@ -1738,12 +1744,17 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
             </div>
             <div className="flex-1">
               <div className="text-base font-semibold text-amber-900 mb-2">
-                ماك لا تستضيف GPU
+                أجهزة ماك غير مدعومة للاستضافة
               </div>
               <div className="text-sm text-amber-800/90 leading-relaxed">
-                كروت شاشة Apple (M1/M2/M3) غير مدعومة. تحتاج كرت NVIDIA على
-                Linux أو Windows مع WSL2. يمكنك بدلا من ذلك{" "}
-                <span className="font-semibold text-accent">استئجار GPU</span>.
+                تعتمد المنصة على كروت NVIDIA عبر{" "}
+                <span className="font-mono" dir="ltr">
+                  Docker
+                </span>
+                ، وهي غير متوفرة على شرائح{" "}
+                <span dir="ltr">Apple Silicon</span>. يمكن بدلا من ذلك{" "}
+                <span className="font-semibold text-accent">استئجار GPU</span>{" "}
+                من الأعضاء الآخرين.
               </div>
             </div>
           </div>
@@ -1764,14 +1775,22 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
       {os === "windows" && (
         <div className="mt-5 rounded-lg border border-border bg-surface/60 p-4">
           <div className="text-xs text-muted-hi font-medium mb-2">
-            ما عندك WSL بعد؟
+            متطلبات التشغيل على Windows
           </div>
           <div className="text-[11px] text-muted leading-relaxed mb-2.5">
-            شغل هذا مرة واحدة في{" "}
+            في حال لم يكن{" "}
+            <span className="font-mono" dir="ltr">
+              WSL
+            </span>{" "}
+            مثبتا على الجهاز، نفذ الأمر التالي في{" "}
             <span className="font-mono" dir="ltr">
               PowerShell
             </span>{" "}
-            (كمسؤول)، ثم افتح Ubuntu وألصق الأمر الذي فوق.
+            بصلاحيات المسؤول. بعد اكتمال التثبيت، افتح{" "}
+            <span className="font-mono" dir="ltr">
+              Ubuntu
+            </span>{" "}
+            ونفذ أمر التثبيت أعلاه.
           </div>
           <CodeBlock
             language="powershell"
