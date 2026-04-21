@@ -41,6 +41,15 @@ services:
       - "3001:3001"
     depends_on:
       - control-plane
+    # Hot-reload dev mode: bind-mount source, keep container's node_modules/.next.
+    # WATCHPACK_POLLING lets Next pick up file changes through the macOS↔Docker boundary.
+    volumes:
+      - ./client-ui:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      WATCHPACK_POLLING: "true"
+    command: npm run dev
 
 volumes:
   pgdata:
