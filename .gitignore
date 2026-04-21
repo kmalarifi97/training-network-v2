@@ -14,9 +14,11 @@ htmlcov/
 *.exe
 *.test
 *.out
+*.syso
 bin/
 gpu-agent
 control-plane/public/gpu-agent-*
+control-plane/public/gpu-network-setup.exe
 
 # Environment
 .env

@@ -24,6 +24,18 @@ deploy_control_plane() {
     echo ""
 }
 
+deploy_installer() {
+    echo "=== Building Windows installer ==="
+    (cd "$(dirname "$0")/installer-windows" && ./build.sh)
+
+    echo "=== Uploading gpu-network-setup.exe to control-plane public dir (Doha) ==="
+    gcloud compute scp \
+        "$(dirname "$0")/control-plane/public/gpu-network-setup.exe" \
+        gpunet-server:~/gpu-network-v2/control-plane/public/gpu-network-setup.exe \
+        --zone=me-central1-a --project=$PROJECT
+    echo ""
+}
+
 deploy_agent() {
     echo "=== Building agent binary ==="
     cd "$(dirname "$0")/node-agent"
@@ -54,8 +66,9 @@ deploy_agent() {
 case $TARGET in
     control-plane) deploy_control_plane ;;
     agent)         deploy_agent ;;
-    all)           deploy_control_plane; deploy_agent ;;
-    *)             echo "Usage: $0 [control-plane|agent|all]"; exit 1 ;;
+    installer)     deploy_installer ;;
+    all)           deploy_installer; deploy_control_plane; deploy_agent ;;
+    *)             echo "Usage: $0 [control-plane|agent|installer|all]"; exit 1 ;;
 esac
 
 echo "=== Deploy complete ==="

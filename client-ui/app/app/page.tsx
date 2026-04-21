@@ -1675,6 +1675,7 @@ function fallbackCopy(text: string, onDone: () => void) {
 function AddGpuView({ onBack }: { onBack: () => void }) {
   const [os, setOs] = useState<"windows" | "linux" | "mac">("windows");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const controlPlane = useMemo(() => {
     if (typeof window === "undefined") return "http://localhost:8000";
@@ -1688,8 +1689,29 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
     });
   }
 
-  const powershellCmd = `wsl --install -d Ubuntu`;
-  const installCmd = `curl -fsSL ${controlPlane}/public/install.sh | sudo bash`;
+  // Same-origin via the Next.js rewrite in next.config.ts → `<a download>`
+  // triggers a real download instead of a cross-origin navigation.
+  const installerHref = "/public/gpu-network-setup.exe";
+  const linuxInstallCmd = `curl -fsSL ${controlPlane}/public/install.sh | sudo bash`;
+  const wslManualCmds = [
+    "wsl --install -d Ubuntu",
+    linuxInstallCmd,
+  ].join("\n");
+
+  // Copy per-OS lead (title + short description) so the primary action is
+  // framed by what it actually does on this OS.
+  const lead =
+    os === "windows"
+      ? {
+          title: "إضافة GPU",
+          sub: "حمّل المثبّت وشغله. سنهتم بالبقية — تثبيت الخلفية، التسجيل، وفتح المتصفح لاعتماد جهازك.",
+        }
+      : os === "linux"
+        ? {
+            title: "إضافة GPU",
+            sub: "نفّذ الأمر التالي في الترمنال. سيظهر رمز اعتماد ونفتح لك صفحة التفعيل تلقائياً.",
+          }
+        : { title: "إضافة GPU", sub: "" };
 
   return (
     <div className="max-w-2xl">
@@ -1700,20 +1722,12 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
         → العودة إلى أجهزتي
       </button>
 
-      <h1 className="text-3xl font-bold tracking-tight mb-3">إضافة GPU</h1>
-      <p className="text-sm text-muted-hi mb-8 leading-relaxed max-w-lg">
-        نفذ الأمر التالي في الترمنال. سيظهر رمز اعتماد في المخرجات، يتم إدخاله
-        في{" "}
-        <a
-          href="/activate"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-accent hover:text-accent-hi"
-        >
-          صفحة التفعيل
-        </a>{" "}
-        لإكمال التسجيل.
-      </p>
+      <h1 className="text-3xl font-bold tracking-tight mb-3">{lead.title}</h1>
+      {lead.sub && (
+        <p className="text-sm text-muted-hi mb-8 leading-relaxed max-w-lg">
+          {lead.sub}
+        </p>
+      )}
 
       {/* OS tabs — subtle, not numbered */}
       <div className="mb-6 inline-flex rounded-lg border border-border bg-surface p-1 gap-1">
@@ -1761,85 +1775,152 @@ function AddGpuView({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* The single primary action — same shape on Linux and Windows. */}
-      {os !== "mac" && (
-        <CodeBlock
-          language="bash"
-          code={installCmd}
-          copied={copiedKey === "bash"}
-          onCopy={() => handleCopy(installCmd, "bash")}
+      {os === "windows" && (
+        <WindowsInstaller
+          href={installerHref}
+          manualCmds={wslManualCmds}
+          manualCopied={copiedKey === "manual"}
+          onCopyManual={() => handleCopy(wslManualCmds, "manual")}
+          showAdvanced={showAdvanced}
+          onToggleAdvanced={() => setShowAdvanced((v) => !v)}
         />
       )}
 
-      {/* Windows prerequisites — numbered reference. Number is inline with
-         the title (bidi-isolated so the period doesn't flip in RTL); the
-         hint and code block sit flush under the title at the same width as
-         the primary command above. */}
-      {os === "windows" && (
-        <div className="mt-10">
-          <div className="text-xs font-semibold text-muted-hi uppercase tracking-wider mb-6">
-            متطلبات التشغيل على Windows
-          </div>
-
-          <ol className="space-y-8 list-none p-0">
-            <li>
-              <h3 className="text-base font-semibold text-foreground mb-2.5 flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-ink text-xs font-bold tabular-nums shrink-0">
-                  1
-                </span>
-                <span>
-                  تثبيت{" "}
-                  <span className="font-mono" dir="ltr">
-                    WSL
-                  </span>
-                </span>
-              </h3>
-              <p className="text-xs text-muted leading-relaxed mb-3">
-                في حال لم يكن{" "}
-                <span className="font-mono" dir="ltr">
-                  WSL
-                </span>{" "}
-                مثبتا على الجهاز، نفذ الأمر التالي في{" "}
-                <span className="font-mono" dir="ltr">
-                  PowerShell
-                </span>{" "}
-                بصلاحيات المسؤول.
-              </p>
-              <CodeBlock
-                language="powershell"
-                code={powershellCmd}
-                copied={copiedKey === "ps"}
-                onCopy={() => handleCopy(powershellCmd, "ps")}
-              />
-            </li>
-
-            <li>
-              <h3 className="text-base font-semibold text-foreground mb-2.5 flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-ink text-xs font-bold tabular-nums shrink-0">
-                  2
-                </span>
-                <span>
-                  تشغيل أمر التثبيت داخل{" "}
-                  <span className="font-mono" dir="ltr">
-                    Ubuntu
-                  </span>
-                </span>
-              </h3>
-              <p className="text-xs text-muted leading-relaxed">
-                بعد اكتمال تثبيت{" "}
-                <span className="font-mono" dir="ltr">
-                  WSL
-                </span>
-                ، افتح نافذة{" "}
-                <span className="font-mono" dir="ltr">
-                  Ubuntu
-                </span>{" "}
-                ونفذ أمر التثبيت الذي في الأعلى.
-              </p>
-            </li>
-          </ol>
-        </div>
+      {os === "linux" && (
+        <CodeBlock
+          language="bash"
+          code={linuxInstallCmd}
+          copied={copiedKey === "bash"}
+          onCopy={() => handleCopy(linuxInstallCmd, "bash")}
+        />
       )}
+    </div>
+  );
+}
+
+function WindowsInstaller({
+  href,
+  manualCmds,
+  manualCopied,
+  onCopyManual,
+  showAdvanced,
+  onToggleAdvanced,
+}: {
+  href: string;
+  manualCmds: string;
+  manualCopied: boolean;
+  onCopyManual: () => void;
+  showAdvanced: boolean;
+  onToggleAdvanced: () => void;
+}) {
+  return (
+    <div>
+      {/* Primary action — download the installer. */}
+      <a
+        href={href}
+        download
+        className="group block rounded-xl border border-accent/30 bg-accent-dim hover:bg-accent/10 transition-colors p-6"
+      >
+        <div className="flex items-center gap-5">
+          <div className="h-14 w-14 rounded-xl bg-accent text-accent-ink flex items-center justify-center text-2xl font-bold flex-shrink-0 shadow-lg shadow-accent/20">
+            ⬇
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-lg font-bold text-foreground mb-1">
+              تحميل مثبّت Windows
+            </div>
+            <div className="text-xs text-muted-hi leading-relaxed">
+              شغّل الملف بعد التحميل. سيثبّت الخلفية، يطلب إعادة تشغيل مرة
+              واحدة، ثم يفتح المتصفح لاعتماد جهازك.
+            </div>
+          </div>
+          <div className="text-xs text-muted font-mono shrink-0 self-start" dir="ltr">
+            .exe
+          </div>
+        </div>
+      </a>
+
+      {/* What to expect — small reassurance strip. */}
+      <ul className="mt-5 space-y-2 text-xs text-muted-hi leading-relaxed">
+        <li className="flex items-start gap-2">
+          <span className="text-accent mt-0.5">●</span>
+          <span>
+            قد يظهر تنبيه أمان من Windows (الملف غير موقّع) — اضغط{" "}
+            <span className="font-mono" dir="ltr">
+              More info
+            </span>{" "}
+            ثم{" "}
+            <span className="font-mono" dir="ltr">
+              Run anyway
+            </span>
+            .
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="text-accent mt-0.5">●</span>
+          <span>
+            يتطلب{" "}
+            <span className="font-mono" dir="ltr">
+              Windows 10
+            </span>{" "}
+            (نسخة 19041 أو أحدث) أو{" "}
+            <span className="font-mono" dir="ltr">
+              Windows 11
+            </span>
+            ، مع كرت <span dir="ltr">NVIDIA</span>.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="text-accent mt-0.5">●</span>
+          <span>
+            المدة التقريبية: 5 دقائق + إعادة تشغيل واحدة (إذا لم يكن{" "}
+            <span className="font-mono" dir="ltr">
+              WSL
+            </span>{" "}
+            مثبتاً).
+          </span>
+        </li>
+      </ul>
+
+      {/* Advanced / manual fallback — collapsed by default. */}
+      <div className="mt-8 border-t border-border pt-5">
+        <button
+          type="button"
+          onClick={onToggleAdvanced}
+          className="text-xs text-muted hover:text-muted-hi transition-colors flex items-center gap-2"
+        >
+          <span className="font-mono tabular-nums" dir="ltr">
+            {showAdvanced ? "−" : "+"}
+          </span>
+          <span>تثبيت يدوي (للمستخدمين المتقدمين)</span>
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-4 space-y-3">
+            <p className="text-xs text-muted leading-relaxed">
+              إذا فضّلت تجاوز المثبّت: ثبّت{" "}
+              <span className="font-mono" dir="ltr">
+                WSL
+              </span>{" "}
+              من{" "}
+              <span className="font-mono" dir="ltr">
+                PowerShell
+              </span>{" "}
+              (بصلاحيات المسؤول)، ثم شغّل سكربت التثبيت داخل{" "}
+              <span className="font-mono" dir="ltr">
+                Ubuntu
+              </span>
+              .
+            </p>
+            <CodeBlock
+              language="bash"
+              code={manualCmds}
+              copied={manualCopied}
+              onCopy={onCopyManual}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
