@@ -210,12 +210,21 @@ fi
 if [[ $ALREADY_REGISTERED -eq 1 ]]; then
     log "This machine is already registered (${CONFIG_PATH} has an agent token)."
 else
-    log "Starting device-code onboarding. A short code will appear below —"
-    log "open it in your browser on any device, sign in, and approve."
-    echo
-    if ! "${BIN_PATH}" login \
-            --control-plane="${CONTROL_PLANE}" \
-            --config="${CONFIG_PATH}"; then
+    # If a wrapper installer (e.g. the Windows .exe) pre-created the device
+    # code, it passes the polling token through the environment and already
+    # opened the browser for the user. In that mode we skip the banner and
+    # just poll. Otherwise we fall back to the standalone flow where the
+    # agent itself creates the code and prints a visit-this-URL prompt.
+    LOGIN_ARGS=(login "--control-plane=${CONTROL_PLANE}" "--config=${CONFIG_PATH}")
+    if [[ -n "${GPU_AGENT_POLLING_TOKEN:-}" ]]; then
+        log "Polling for device approval (code was created by the installer)."
+        LOGIN_ARGS+=("--polling-token=${GPU_AGENT_POLLING_TOKEN}")
+    else
+        log "Starting device-code onboarding. A short code will appear below —"
+        log "open it in your browser on any device, sign in, and approve."
+        echo
+    fi
+    if ! "${BIN_PATH}" "${LOGIN_ARGS[@]}"; then
         cat >&2 <<EOF
 
 !! gpu-agent login did not complete. The binary and systemd unit are

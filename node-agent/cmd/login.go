@@ -51,6 +51,7 @@ func runLogin(args []string) error {
 	fs := flag.NewFlagSet("login", flag.ContinueOnError)
 	controlPlane := fs.String("control-plane", "", "Control plane base URL (required)")
 	configPath := fs.String("config", config.DefaultPath(), "Where to write the agent config file")
+	pollingTokenFlag := fs.String("polling-token", "", "Pre-created polling token from a wrapper installer. When set, skips GPU detect + code creation + the activation banner and polls the given token directly.")
 	pollEveryFlag := fs.Duration("poll-interval", 3*time.Second, "How often to poll while waiting for approval")
 	timeoutFlag := fs.Duration("timeout", 10*time.Minute, "Stop waiting for approval after this duration")
 	if err := fs.Parse(args); err != nil {
@@ -61,33 +62,42 @@ func runLogin(args []string) error {
 	}
 	baseURL := strings.TrimRight(*controlPlane, "/")
 
-	detectCtx, cancelDetect := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancelDetect()
-	devices, err := gpu.Detect(detectCtx, gpu.ExecRunner{})
-	if err != nil {
-		return fmt.Errorf("GPU detection failed: %w", err)
-	}
-	spec, err := gpu.Summarize(devices)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(os.Stderr, "Detected %d GPU(s): %s, %d GB each\n", spec.Count, spec.Model, spec.MemoryGB)
+	var pollingToken string
+	if *pollingTokenFlag != "" {
+		// Wrapper installer (e.g. gpu-network-setup.exe) already created the
+		// device code and opened the browser — we just poll.
+		pollingToken = *pollingTokenFlag
+		fmt.Fprintln(os.Stderr, "Using device code from installer. Waiting for approval in your browser...")
+	} else {
+		detectCtx, cancelDetect := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelDetect()
+		devices, err := gpu.Detect(detectCtx, gpu.ExecRunner{})
+		if err != nil {
+			return fmt.Errorf("GPU detection failed: %w", err)
+		}
+		spec, err := gpu.Summarize(devices)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "Detected %d GPU(s): %s, %d GB each\n", spec.Count, spec.Model, spec.MemoryGB)
 
-	code, err := requestDeviceCode(detectCtx, baseURL, createCodePayload{
-		GPUModel:    spec.Model,
-		GPUMemoryGB: spec.MemoryGB,
-		GPUCount:    spec.Count,
-	})
-	if err != nil {
-		return fmt.Errorf("request device code: %w", err)
-	}
+		code, err := requestDeviceCode(detectCtx, baseURL, createCodePayload{
+			GPUModel:    spec.Model,
+			GPUMemoryGB: spec.MemoryGB,
+			GPUCount:    spec.Count,
+		})
+		if err != nil {
+			return fmt.Errorf("request device code: %w", err)
+		}
 
-	printActivationPrompt(code)
+		printActivationPrompt(code)
+		pollingToken = code.PollingToken
+	}
 
 	pollCtx, cancelPoll := context.WithTimeout(context.Background(), *timeoutFlag)
 	defer cancelPoll()
 
-	approved, err := pollUntilApproved(pollCtx, baseURL, code.PollingToken, *pollEveryFlag)
+	approved, err := pollUntilApproved(pollCtx, baseURL, pollingToken, *pollEveryFlag)
 	if err != nil {
 		return err
 	}
